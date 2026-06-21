@@ -11,7 +11,7 @@
 | CAPVIA Gateway | `/path/to/CAPVIA` | `PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload` | 8000 |
 | ATS Engine | `ats_resume/backend/` | `PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload` | 8001 |
 | Simulation | `ai_simulation/backend/` | `uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload` | 8002 |
-| Interview Eval | `ai_interview/` | `python evaluation_server.py` | 8765 |
+| Interview Eval | `ai_interview/` | `python3 evaluation_server.py` | 8765 |
 | Frontend | `capvia_platform/frontend/` | `npm run dev` | 3000 |
 
 ---
@@ -89,7 +89,7 @@ cd /path/to/CAPVIA/ai_interview
 source venv/bin/activate  # Standard
 # source ~/capvia_interview_venv/bin/activate  # If on exFAT volume
 
-python evaluation_server.py
+python3 evaluation_server.py
 # Output: "Starting AI Interview Evaluation Server on http://localhost:8765"
 ```
 
@@ -155,13 +155,13 @@ celery -A capvia_platform.tasks flower --port=5555
 ```bash
 cd capvia_platform
 source venv/bin/activate
-python -m alembic upgrade head
+python3 -m alembic upgrade head
 ```
 
 ### Check Current Migration State
 
 ```bash
-python -m alembic current
+python3 -m alembic current
 ```
 
 ### Create a New Migration
@@ -169,7 +169,7 @@ python -m alembic current
 After modifying `models/models.py`:
 
 ```bash
-python -m alembic revision --autogenerate -m "Add new_field to users"
+python3 -m alembic revision --autogenerate -m "Add new_field to users"
 # Creates: alembic/versions/<revision_id>_add_new_field_to_users.py
 ```
 
@@ -177,25 +177,25 @@ Review the generated file before applying:
 
 ```bash
 cat alembic/versions/<revision_id>_*.py
-python -m alembic upgrade head
+python3 -m alembic upgrade head
 ```
 
 ### Roll Back One Migration
 
 ```bash
-python -m alembic downgrade -1
+python3 -m alembic downgrade -1
 ```
 
 ### Roll Back to a Specific Revision
 
 ```bash
-python -m alembic downgrade <revision_id>
+python3 -m alembic downgrade <revision_id>
 ```
 
 ### Show Migration History
 
 ```bash
-python -m alembic history --verbose
+python3 -m alembic history --verbose
 ```
 
 ---
@@ -209,13 +209,13 @@ cd capvia_platform
 source venv/bin/activate
 
 # Option A: Use the drop script
-python drop_tables.py
+python3 drop_tables.py
 
 # Option B: Direct Alembic downgrade to base
-python -m alembic downgrade base
+python3 -m alembic downgrade base
 
 # Recreate
-python -m alembic upgrade head
+python3 -m alembic upgrade head
 ```
 
 ---
@@ -228,7 +228,7 @@ python -m alembic upgrade head
 cd capvia_platform
 source venv/bin/activate
 
-python -c "
+python3 -c "
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from capvia_platform.models.models import User, UserRole
@@ -265,7 +265,7 @@ asyncio.run(seed())
 ### Seed Sample Company and Internship
 
 ```bash
-python -c "
+python3 -c "
 import asyncio, uuid
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from capvia_platform.models.models import Company, Internship, InternshipStatus, WorkMode

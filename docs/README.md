@@ -492,7 +492,7 @@ cp .env.development .env
 # Edit .env — set your DATABASE_URL and REDIS_URL
 
 # 4. Run database migrations
-python -m alembic upgrade head
+python3 -m alembic upgrade head
 
 # 5. Start the gateway (from CAPVIA root)
 cd ..

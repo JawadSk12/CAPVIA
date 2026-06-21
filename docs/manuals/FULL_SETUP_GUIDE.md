@@ -176,7 +176,7 @@ Successfully installed fastapi-x.x uvicorn-x.x pydantic-x.x sqlalchemy-x.x async
 Verify key packages:
 
 ```bash
-python -c "import fastapi, sqlalchemy, asyncpg, alembic, redis; print('All OK')"
+python3 -c "import fastapi, sqlalchemy, asyncpg, alembic, redis; print('All OK')"
 # Expected: All OK
 ```
 
@@ -207,7 +207,7 @@ INTERVIEW_ENGINE_URL=http://localhost:8765
 Generate a secure `SECRET_KEY`:
 
 ```bash
-python -c "import secrets; print(secrets.token_hex(32))"
+python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 ---
@@ -227,7 +227,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 Verify connection:
 
 ```bash
-python -c "
+python3 -c "
 import asyncio, asyncpg
 async def test():
     conn = await asyncpg.connect('postgresql://neondb_owner:<pw>@<host>/neondb?ssl=require')
@@ -249,7 +249,7 @@ asyncio.run(test())
 Verify connection:
 
 ```bash
-python -c "
+python3 -c "
 import asyncio, redis.asyncio as aioredis
 async def test():
     r = aioredis.from_url('rediss://default:<token>@<host>:6379')
@@ -296,7 +296,7 @@ asyncio.run(test())
 
 ```bash
 # From capvia_platform/ with venv active
-python -m alembic upgrade head
+python3 -m alembic upgrade head
 ```
 
 Expected output:
@@ -312,7 +312,7 @@ INFO  [alembic.runtime.migration] Running upgrade <rev> -> head, All migrations 
 Verify tables:
 
 ```bash
-python -c "
+python3 -c "
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
@@ -337,7 +337,7 @@ Expected: 17+ tables listed.
 To create a test HR user and sample data:
 
 ```bash
-python -c "
+python3 -c "
 import asyncio
 from capvia_platform.models.models import User, UserRole
 from capvia_platform.utils.auth import hash_password
@@ -447,7 +447,7 @@ python3.12 -m venv venv && source venv/bin/activate
 
 pip install -r requirements_ai.txt
 
-python evaluation_server.py
+python3 evaluation_server.py
 # Server starts on http://localhost:8765
 ```
 
