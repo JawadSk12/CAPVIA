@@ -369,7 +369,7 @@ asyncio.run(seed())
 
 ```bash
 # From the CAPVIA root directory with the gateway venv active:
-PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform
+PYTHONPATH="." python3 -m uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform
 ```
 
 Expected output:
@@ -402,7 +402,7 @@ cp .env.example .env
 # Edit .env to match your database/redis/mongodb settings
 
 # Run ATS backend with ai_engine in PYTHONPATH
-PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+PYTHONPATH=".:../ai_engine" python3 -m uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 ---
@@ -428,7 +428,7 @@ cp .env.example .env
 alembic upgrade head
 
 # Start Simulation FastAPI server on port 8002
-uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
+python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
 ```
 
 ---

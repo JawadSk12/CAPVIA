@@ -8,9 +8,9 @@
 
 | Service | Directory | Command | Port |
 |---------|-----------|---------|------|
-| CAPVIA Gateway | `/path/to/CAPVIA` | `PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform` | 8000 |
-| ATS Engine | `ats_resume/backend/` | `PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload` | 8001 |
-| Simulation | `ai_simulation/backend/` | `uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload` | 8002 |
+| CAPVIA Gateway | `/path/to/CAPVIA` | `PYTHONPATH="." python3 -m uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform` | 8000 |
+| ATS Engine | `ats_resume/backend/` | `PYTHONPATH=".:../ai_engine" python3 -m uvicorn main:app --host 127.0.0.1 --port 8001 --reload` | 8001 |
+| Simulation | `ai_simulation/backend/` | `python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload` | 8002 |
 | Interview Eval | `ai_interview/` | `python3 evaluation_server.py` | 8765 |
 | Frontend | `capvia_platform/frontend/` | `npm run dev` | 3000 |
 
@@ -32,10 +32,10 @@ source venv/bin/activate  # Standard
 # source ~/capvia_gateway_venv/bin/activate  # If on exFAT volume
 
 # Development (with hot-reload and PYTHONPATH set)
-PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform
+PYTHONPATH="." python3 -m uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform
 
 # Production-like (no reload, multiple workers)
-PYTHONPATH="." uvicorn capvia_platform.main:app --host 0.0.0.0 --port 8000 --workers 4
+PYTHONPATH="." python3 -m uvicorn capvia_platform.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 **API Explorer:** http://localhost:8000/docs  
@@ -52,7 +52,7 @@ source venv/bin/activate  # Standard
 # source ~/capvia_ats_venv/bin/activate  # If on exFAT volume
 
 # Run with ai_engine in PYTHONPATH
-PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+PYTHONPATH=".:../ai_engine" python3 -m uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 The ATS engine requires:
@@ -74,7 +74,7 @@ source venv/bin/activate  # Standard
 alembic upgrade head
 
 # Start FastAPI dev server
-uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
+python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
 ```
 
 ---
@@ -319,7 +319,7 @@ asyncio.run(seed())
 ```bash
 # Uvicorn prints structured logs by default
 # To increase verbosity:
-uvicorn capvia_platform.main:app --port 8000 --log-level debug --reload --reload-dir capvia_platform
+python3 -m uvicorn capvia_platform.main:app --port 8000 --log-level debug --reload --reload-dir capvia_platform
 ```
 
 ### View Application Request Logs
@@ -333,7 +333,7 @@ The `RequestLoggingMiddleware` logs every request:
 
 ```bash
 # Run and filter for errors only
-uvicorn capvia_platform.main:app --port 8000 2>&1 | grep -E "ERROR|WARNING"
+python3 -m uvicorn capvia_platform.main:app --port 8000 2>&1 | grep -E "ERROR|WARNING"
 ```
 
 ---
