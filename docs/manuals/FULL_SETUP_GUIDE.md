@@ -369,7 +369,7 @@ asyncio.run(seed())
 
 ```bash
 # From the CAPVIA root directory with the gateway venv active:
-PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform
 ```
 
 Expected output:

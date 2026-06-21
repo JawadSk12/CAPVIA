@@ -496,7 +496,7 @@ python3 -m alembic upgrade head
 
 # 5. Start the gateway (from CAPVIA root)
 cd ..
-PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform
 ```
 
 ```bash
@@ -533,7 +533,7 @@ source venv/bin/activate  # Standard
 # source ~/capvia_gateway_venv/bin/activate  # If on exFAT volume
 
 # Start services (from CAPVIA root)
-PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload &
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform &
 cd capvia_platform/frontend && npm run dev &
 
 # Run tests (from capvia_platform/) before committing

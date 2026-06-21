@@ -8,7 +8,7 @@
 
 | Service | Directory | Command | Port |
 |---------|-----------|---------|------|
-| CAPVIA Gateway | `/path/to/CAPVIA` | `PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload` | 8000 |
+| CAPVIA Gateway | `/path/to/CAPVIA` | `PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform` | 8000 |
 | ATS Engine | `ats_resume/backend/` | `PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload` | 8001 |
 | Simulation | `ai_simulation/backend/` | `uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload` | 8002 |
 | Interview Eval | `ai_interview/` | `python3 evaluation_server.py` | 8765 |
@@ -32,7 +32,7 @@ source venv/bin/activate  # Standard
 # source ~/capvia_gateway_venv/bin/activate  # If on exFAT volume
 
 # Development (with hot-reload and PYTHONPATH set)
-PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir capvia_platform
 
 # Production-like (no reload, multiple workers)
 PYTHONPATH="." uvicorn capvia_platform.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -319,7 +319,7 @@ asyncio.run(seed())
 ```bash
 # Uvicorn prints structured logs by default
 # To increase verbosity:
-uvicorn capvia_platform.main:app --port 8000 --log-level debug --reload
+uvicorn capvia_platform.main:app --port 8000 --log-level debug --reload --reload-dir capvia_platform
 ```
 
 ### View Application Request Logs
