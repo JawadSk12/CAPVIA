@@ -65,7 +65,7 @@ class GazeTracker:
 
     # ──────────────────────────────────────────────────────────────────────────
 
-    def __init__(self):
+    def __init__(self, window_size: int = 5):
         # Calibration
         self._calib_start: Optional[float] = None
         self._calib_ratios: list           = []
@@ -77,6 +77,7 @@ class GazeTracker:
         self.right_thr = self._DEFAULT_RIGHT_THR
 
         # Smoothing
+        self.SMOOTH_WINDOW = window_size
         self._ratio_buf: deque = deque(maxlen=self.SMOOTH_WINDOW)
 
         # Debounce state machine
