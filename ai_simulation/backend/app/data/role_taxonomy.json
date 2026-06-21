@@ -1,0 +1,296 @@
+{
+  "SOFTWARE_ENGINEERING": {
+    "frontend_developer": {
+      "name": "Frontend Developer",
+      "keywords": ["frontend", "front-end", "ui developer", "web developer", "html", "css", "javascript", "typescript", "react", "angular", "vue", "svelte", "dom", "browser", "responsive design", "web design"],
+      "specializations": {
+        "react": ["react", "reactjs", "react.js", "jsx", "hooks", "redux", "next.js", "nextjs"],
+        "angular": ["angular", "angularjs", "typescript", "rxjs", "ngrx"],
+        "vue": ["vue", "vuejs", "vue.js", "nuxt"],
+        "svelte": ["svelte", "sveltekit"]
+      }
+    },
+    "backend_developer": {
+      "name": "Backend Developer",
+      "keywords": ["backend", "back-end", "server-side", "api developer", "rest api", "node.js", "nodejs", "python", "java", "spring", "django", "flask", "express", "fastapi", "database", "postgresql", "mysql", "microservices"],
+      "specializations": {
+        "nodejs": ["node", "nodejs", "node.js", "express", "nestjs"],
+        "python": ["python", "django", "flask", "fastapi", "sqlalchemy"],
+        "java": ["java", "spring", "spring boot", "hibernate", "maven"],
+        "microservices": ["microservices", "grpc", "kafka", "rabbitmq", "distributed"]
+      }
+    },
+    "fullstack_developer": {
+      "name": "Full Stack Developer",
+      "keywords": ["fullstack", "full-stack", "full stack", "mern", "mean", "mevn", "end-to-end", "frontend and backend"],
+      "specializations": {
+        "mern": ["mern", "mongodb", "express", "react", "node"],
+        "mean": ["mean", "mongodb", "express", "angular", "node"],
+        "nextjs": ["next.js", "nextjs", "vercel"]
+      }
+    },
+    "mobile_developer": {
+      "name": "Mobile App Developer",
+      "keywords": ["mobile", "android", "ios", "react native", "flutter", "swift", "kotlin", "mobile app", "app development"],
+      "specializations": {
+        "react_native": ["react native", "react-native", "expo"],
+        "flutter": ["flutter", "dart"],
+        "android": ["android", "kotlin", "java android"],
+        "ios": ["ios", "swift", "swiftui", "objective-c", "xcode"]
+      }
+    },
+    "python_developer": {
+      "name": "Python Developer",
+      "keywords": ["python", "django", "flask", "fastapi", "scripting", "automation"],
+      "specializations": {
+        "django": ["django", "drf", "django rest"],
+        "flask": ["flask"],
+        "fastapi": ["fastapi", "pydantic", "async python"]
+      }
+    },
+    "java_developer": {
+      "name": "Java Developer",
+      "keywords": ["java", "spring boot", "hibernate", "jvm", "maven", "gradle"],
+      "specializations": {
+        "spring": ["spring", "spring boot", "spring mvc"],
+        "enterprise": ["j2ee", "jee", "ejb", "jpa"]
+      }
+    },
+    "game_developer": {
+      "name": "Game Developer",
+      "keywords": ["game", "unity", "unreal", "gaming", "3d", "shader", "gameplay"],
+      "specializations": {
+        "unity": ["unity", "c#", "unity3d"],
+        "unreal": ["unreal", "unreal engine", "ue5", "blueprint", "c++ game"]
+      }
+    }
+  },
+  "AI_DATA": {
+    "ml_engineer": {
+      "name": "ML Engineer",
+      "keywords": ["machine learning", "ml", "model training", "scikit-learn", "tensorflow", "pytorch", "model deployment", "feature engineering", "supervised learning", "unsupervised learning", "regression", "classification"],
+      "specializations": {
+        "nlp": ["nlp", "natural language processing", "text classification", "sentiment", "transformers", "bert", "gpt", "llm", "language model", "tokenization", "named entity"],
+        "computer_vision": ["computer vision", "cv", "image classification", "object detection", "segmentation", "cnn", "yolo", "opencv", "image processing"],
+        "deep_learning": ["deep learning", "neural network", "cnn", "rnn", "lstm", "transformer", "attention mechanism"],
+        "time_series": ["time series", "forecasting", "arima", "lstm time series", "prophet"]
+      }
+    },
+    "data_scientist": {
+      "name": "Data Scientist",
+      "keywords": ["data science", "data scientist", "statistical analysis", "hypothesis testing", "eda", "exploratory data analysis", "statistics", "r", "python data", "pandas", "numpy", "matplotlib"],
+      "specializations": {
+        "statistical": ["statistics", "hypothesis", "a/b testing", "regression analysis"],
+        "ml": ["predictive modeling", "machine learning", "feature selection"],
+        "visualization": ["tableau", "power bi", "matplotlib", "plotly", "visualization"]
+      }
+    },
+    "data_analyst": {
+      "name": "Data Analyst",
+      "keywords": ["data analysis", "data analyst", "sql", "excel", "reporting", "dashboard", "kpi", "metrics", "business intelligence", "tableau", "power bi", "data visualization"],
+      "specializations": {
+        "sql": ["sql", "mysql", "postgresql", "query optimization"],
+        "bi": ["tableau", "power bi", "looker", "metabase", "bi tools"],
+        "excel": ["excel", "vba", "pivot table", "advanced excel"]
+      }
+    },
+    "nlp_engineer": {
+      "name": "NLP Engineer",
+      "keywords": ["nlp", "natural language processing", "text", "language model", "bert", "gpt", "transformers", "sentiment analysis", "named entity recognition", "ner", "text classification", "information extraction"],
+      "specializations": {
+        "llm": ["llm", "large language model", "gpt", "claude", "fine-tuning"],
+        "classical_nlp": ["spacy", "nltk", "tfidf", "word2vec", "glove"]
+      }
+    },
+    "cv_engineer": {
+      "name": "Computer Vision Engineer",
+      "keywords": ["computer vision", "image", "video", "object detection", "segmentation", "yolo", "opencv", "cnn", "image processing", "facial recognition", "depth estimation"],
+      "specializations": {
+        "detection": ["object detection", "yolo", "faster rcnn", "ssd"],
+        "segmentation": ["semantic segmentation", "instance segmentation", "mask rcnn", "unet"],
+        "generative": ["gan", "stable diffusion", "dall-e", "image generation"]
+      }
+    },
+    "mlops_engineer": {
+      "name": "MLOps Engineer",
+      "keywords": ["mlops", "ml pipeline", "model deployment", "kubeflow", "mlflow", "model monitoring", "feature store", "model registry", "cicd ml", "data pipeline"],
+      "specializations": {
+        "deployment": ["model serving", "torchserve", "triton", "bento"],
+        "pipeline": ["airflow", "prefect", "dagster", "mlflow", "kubeflow"],
+        "monitoring": ["evidently", "great expectations", "data drift"]
+      }
+    },
+    "data_engineer": {
+      "name": "Data Engineer",
+      "keywords": ["data engineering", "etl", "data pipeline", "spark", "hadoop", "kafka", "airflow", "data warehouse", "dbt", "big data", "batch processing", "stream processing"],
+      "specializations": {
+        "streaming": ["kafka", "spark streaming", "flink", "kinesis"],
+        "warehouse": ["snowflake", "bigquery", "redshift", "databricks"],
+        "orchestration": ["airflow", "prefect", "dagster", "dbt"]
+      }
+    },
+    "generative_ai_engineer": {
+      "name": "Generative AI Engineer",
+      "keywords": ["generative ai", "gen ai", "llm", "prompt engineering", "langchain", "rag", "retrieval augmented generation", "fine-tuning", "gpt", "claude", "stable diffusion", "multimodal"],
+      "specializations": {
+        "rag": ["rag", "retrieval augmented", "vector database", "chromadb", "pinecone", "faiss"],
+        "fine_tuning": ["fine-tuning", "lora", "qlora", "peft", "instruction tuning"],
+        "agents": ["ai agents", "langchain", "langraph", "autogpt", "tool use", "function calling"]
+      }
+    },
+    "ai_automation_engineer": {
+      "name": "AI Automation Engineer",
+      "keywords": ["ai automation", "workflow automation", "n8n", "zapier", "make.com", "rpa", "robotic process automation", "intelligent automation"],
+      "specializations": {
+        "rpa": ["rpa", "uipath", "automation anywhere", "blue prism"],
+        "workflow": ["n8n", "zapier", "make.com", "workflow automation"]
+      }
+    }
+  },
+  "DEVOPS_CLOUD": {
+    "devops_engineer": {
+      "name": "DevOps Engineer",
+      "keywords": ["devops", "ci/cd", "jenkins", "github actions", "gitlab ci", "docker", "kubernetes", "terraform", "ansible", "infrastructure", "deployment pipeline"],
+      "specializations": {
+        "kubernetes": ["kubernetes", "k8s", "helm", "kubectl", "service mesh", "istio"],
+        "terraform": ["terraform", "iac", "infrastructure as code", "pulumi"],
+        "monitoring": ["prometheus", "grafana", "elk stack", "datadog", "observability"]
+      }
+    },
+    "cloud_engineer": {
+      "name": "Cloud Engineer",
+      "keywords": ["cloud", "aws", "azure", "gcp", "cloud architecture", "serverless", "lambda", "cloud native", "iaas", "paas", "saas"],
+      "specializations": {
+        "aws": ["aws", "amazon web services", "ec2", "s3", "lambda", "rds", "eks"],
+        "azure": ["azure", "microsoft azure", "azure devops", "azure functions"],
+        "gcp": ["gcp", "google cloud", "gke", "cloud run", "bigquery gcp"]
+      }
+    },
+    "sre": {
+      "name": "Site Reliability Engineer",
+      "keywords": ["sre", "site reliability", "reliability", "uptime", "on-call", "incident management", "runbook", "toil", "error budget", "slo", "sla"],
+      "specializations": {
+        "observability": ["observability", "tracing", "jaeger", "zipkin", "metrics"],
+        "chaos": ["chaos engineering", "game day", "fault injection"]
+      }
+    }
+  },
+  "CYBERSECURITY": {
+    "cybersecurity_analyst": {
+      "name": "Cybersecurity Analyst",
+      "keywords": ["cybersecurity", "security", "threat analysis", "soc", "incident response", "vulnerability", "penetration testing", "ethical hacking", "siem", "firewall"],
+      "specializations": {
+        "soc": ["soc analyst", "siem", "splunk", "qradar", "threat hunting"],
+        "pentest": ["penetration testing", "ethical hacking", "kali linux", "metasploit", "burp suite"],
+        "appsec": ["application security", "owasp", "secure coding", "devsecops"]
+      }
+    },
+    "ethical_hacker": {
+      "name": "Ethical Hacker",
+      "keywords": ["ethical hacking", "penetration testing", "pentest", "red team", "exploit", "cve", "vulnerability assessment"],
+      "specializations": {
+        "web": ["web application security", "owasp top 10", "sql injection", "xss"],
+        "network": ["network security", "nmap", "wireshark", "packet analysis"],
+        "mobile": ["mobile security", "apk analysis", "ios security"]
+      }
+    }
+  },
+  "DESIGN": {
+    "ux_designer": {
+      "name": "UX Designer",
+      "keywords": ["ux", "user experience", "user research", "wireframe", "prototype", "usability", "figma", "sketch", "user journey", "information architecture", "interaction design"],
+      "specializations": {
+        "research": ["user research", "usability testing", "interviews", "surveys"],
+        "ui_ux": ["ui/ux", "visual design", "design system", "style guide"]
+      }
+    },
+    "ui_designer": {
+      "name": "UI Designer",
+      "keywords": ["ui", "user interface", "visual design", "figma", "adobe xd", "design system", "typography", "color theory", "responsive design"],
+      "specializations": {
+        "web": ["web design", "landing page", "marketing design"],
+        "mobile": ["mobile ui", "ios design", "android design", "app design"]
+      }
+    },
+    "product_designer": {
+      "name": "Product Designer",
+      "keywords": ["product design", "end to end design", "design thinking", "wireframe", "prototype", "figma", "product strategy", "design sprint"],
+      "specializations": {}
+    }
+  },
+  "PRODUCT_MANAGEMENT": {
+    "product_manager": {
+      "name": "Product Manager",
+      "keywords": ["product manager", "pm", "product management", "roadmap", "backlog", "prioritization", "stakeholder", "prd", "product requirements", "agile", "scrum", "user story"],
+      "specializations": {
+        "technical_pm": ["technical pm", "api product", "developer tools", "platform product"],
+        "growth_pm": ["growth", "metrics", "a/b testing", "funnel optimization"]
+      }
+    },
+    "associate_product_manager": {
+      "name": "Associate Product Manager",
+      "keywords": ["apm", "associate pm", "product associate", "junior pm", "product management trainee"],
+      "specializations": {}
+    },
+    "project_manager": {
+      "name": "Project Manager",
+      "keywords": ["project manager", "pmp", "project management", "timeline", "milestones", "risk management", "stakeholder management", "gantt", "delivery"],
+      "specializations": {
+        "agile": ["agile", "scrum master", "kanban", "sprint planning"],
+        "waterfall": ["waterfall", "pmp", "prince2", "pmbok"]
+      }
+    },
+    "business_analyst": {
+      "name": "Business Analyst",
+      "keywords": ["business analyst", "ba", "requirements gathering", "process mapping", "bpmn", "use cases", "functional requirements", "business process"],
+      "specializations": {
+        "it": ["it business analyst", "systems analysis", "erp"],
+        "finance": ["financial analysis", "business case", "roi analysis"]
+      }
+    },
+    "project_coordinator": {
+      "name": "Project Coordinator",
+      "keywords": ["project coordinator", "coordination", "scheduling", "project planning", "resource management", "meeting coordination", "project tracking", "status report"],
+      "specializations": {}
+    }
+  },
+  "MARKETING": {
+    "digital_marketing": {
+      "name": "Digital Marketing Intern",
+      "keywords": ["digital marketing", "online marketing", "social media", "seo", "sem", "email marketing", "content marketing", "paid ads", "google ads", "facebook ads", "campaigns"],
+      "specializations": {
+        "seo": ["seo", "search engine optimization", "keyword research", "backlinks", "serp"],
+        "performance": ["performance marketing", "paid ads", "google ads", "facebook ads", "roi", "roas"],
+        "content": ["content marketing", "content strategy", "blogging", "copywriting"],
+        "social": ["social media marketing", "instagram", "twitter", "linkedin marketing"]
+      }
+    },
+    "growth_marketer": {
+      "name": "Growth Marketer",
+      "keywords": ["growth", "growth hacking", "user acquisition", "retention", "activation", "funnel", "virality", "product-led growth"],
+      "specializations": {}
+    }
+  },
+  "FINANCE": {
+    "financial_analyst": {
+      "name": "Financial Analyst",
+      "keywords": ["financial analyst", "finance", "financial modeling", "valuation", "dcf", "excel financial", "investment analysis", "p&l", "balance sheet"],
+      "specializations": {
+        "investment": ["investment banking", "ib", "m&a", "deal analysis", "lbo"],
+        "fp_a": ["fp&a", "financial planning", "budgeting", "forecasting"]
+      }
+    }
+  },
+  "STARTUP": {
+    "founders_office": {
+      "name": "Founder's Office Intern",
+      "keywords": ["founder's office", "founders office", "ceo office", "chief of staff", "startup operations", "cross-functional", "strategic projects", "founders associate"],
+      "specializations": {}
+    },
+    "startup_generalist": {
+      "name": "Technical Generalist",
+      "keywords": ["generalist", "multi-functional", "full-stack generalist", "startup", "zero to one", "versatile", "wearing many hats"],
+      "specializations": {}
+    }
+  }
+}

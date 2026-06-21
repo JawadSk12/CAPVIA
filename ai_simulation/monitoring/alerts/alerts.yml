@@ -1,0 +1,26 @@
+groups:
+  - name: ai-simulation-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+
+      - alert: SessionExpired
+        expr: test_sessions_expired_total > 100
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of expired sessions"
+
+      - alert: EvaluationQueueBacklog
+        expr: celery_queue_length > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Evaluation queue is backing up"

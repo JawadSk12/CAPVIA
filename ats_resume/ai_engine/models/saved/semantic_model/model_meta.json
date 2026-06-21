@@ -1,0 +1,16 @@
+{
+  "base_model": "all-MiniLM-L6-v2",
+  "embedding_dim": 384,
+  "baseline_pearson": 0.8274,
+  "finetuned_pearson": 0.8585,
+  "improvement": 0.0311,
+  "sts_train_examples": 5749,
+  "linkedin_pairs": 3000,
+  "handcrafted_pairs": 70,
+  "total_train": 8819,
+  "batch_size": 32,
+  "epochs": 4,
+  "device": "cpu",
+  "training_date": "2026-05-17T21:17:40.555076",
+  "model_path": "ai_engine/models/saved/semantic_model"
+}

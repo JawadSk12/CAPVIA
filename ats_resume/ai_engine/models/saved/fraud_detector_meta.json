@@ -1,0 +1,33 @@
+{
+  "features": [
+    "skill_count",
+    "unique_skill_count",
+    "duplicate_skill_ratio",
+    "avg_skill_rarity",
+    "max_skill_rarity",
+    "advanced_skill_count",
+    "keyword_density",
+    "experience_count",
+    "year_span",
+    "experience_year_count",
+    "quantified_ratio",
+    "template_hit_count",
+    "avg_desc_length",
+    "min_desc_length",
+    "generic_phrase_count",
+    "education_count",
+    "has_unverified_cert",
+    "summary_length",
+    "has_contact_info",
+    "has_github",
+    "total_text_length",
+    "internal_dup_score"
+  ],
+  "fraud_rate": 0.1136,
+  "optimal_threshold": 0.7691,
+  "roc_auc": 0.8742,
+  "average_precision": 0.8036,
+  "training_samples": 1986,
+  "test_samples": 497,
+  "training_date": "2026-05-17T23:17:40.873765"
+}

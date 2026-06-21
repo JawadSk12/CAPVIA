@@ -1,0 +1,58 @@
+# ── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+build/
+dist/
+
+# ── Virtual environment ──────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Secrets ──────────────────────────────────────────────────────
+.env
+!.env.example
+
+# ── IDE ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# ── Uploaded resumes ─────────────────────────────────────────────
+backend/data/raw/*.pdf
+backend/data/raw/*.docx
+backend/data/raw/*.doc
+
+# ── ML model cache ───────────────────────────────────────────────
+.cache/
+*.pt
+*.bin
+*.pkl
+*.joblib
+
+# ── Logs ─────────────────────────────────────────────────────────
+backend/logs/
+*.log
+
+# ── Large datasets ───────────────────────────────────────────────
+backend/data/datasets/resumes/*.csv
+backend/data/datasets/job_descriptions/*.csv
+backend/data/datasets/onet/
+
+# ── Jupyter ──────────────────────────────────────────────────────
+.ipynb_checkpoints/
+backend/notebooks/.ipynb_checkpoints/
+
+# ── Tests / Coverage ─────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Node / Frontend ──────────────────────────────────────────────
+node_modules/
+dist/
+.next/

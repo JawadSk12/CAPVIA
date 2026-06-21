@@ -1,0 +1,11 @@
+{
+  "id": null,
+  "title": "AI Simulation - Application Metrics",
+  "tags": ["ai-simulation", "application"],
+  "panels": [
+    { "id": 1, "title": "Active Sessions", "type": "stat" },
+    { "id": 2, "title": "Evaluations/min", "type": "graph" },
+    { "id": 3, "title": "Average Score", "type": "stat" },
+    { "id": 4, "title": "Flagged Sessions", "type": "stat" }
+  ]
+}

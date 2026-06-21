@@ -1,0 +1,7 @@
+{
+  "variant": "efficientnet",
+  "test_accuracy": 0.3467,
+  "best_val_accuracy": 0.3467,
+  "epochs_trained": 5,
+  "model_path": "ai_models/confidence/weights/confidence_model.pth"
+}

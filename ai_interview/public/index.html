@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0F1117" />
+    <meta
+      name="description"
+      content="IntelliRecruit AI - AI-Powered Video Interview System"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>IntelliRecruit AI - Interview System</title>
+    <script>
+      // Global flag to track OpenCV loading
+      window.cvLoadingComplete = false;
+      
+      function onOpenCvReady() {
+        console.log('✅ OpenCV.js loaded successfully');
+        window.cvLoadingComplete = true;
+        
+        // Dispatch custom event
+        window.dispatchEvent(new Event('opencv-ready'));
+      }
+      
+      function onOpenCvError() {
+        console.error('❌ OpenCV.js failed to load');
+        window.cvLoadingComplete = false;
+      }
+    </script>
+    
+    <!-- Load OpenCV.js from CDN -->
+    <script 
+      async 
+      src="https://docs.opencv.org/4.7.0/opencv.js" 
+      onload="onOpenCvReady();" 
+      onerror="onOpenCvError();"
+      type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: ai-simulation
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 80
+      targetPort: 8000

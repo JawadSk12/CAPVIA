@@ -1,0 +1,975 @@
+
+================================================================================
+         INTELLIRECRUIT AI — COMPLETE PROJECT EXPLANATION
+         Machine Vision, Python Concepts, Architecture & Code Walkthrough
+================================================================================
+
+WRITTEN FOR: Huzaifa Ansari
+PROJECT:     intell-Interview (IntelliRecruit AI)
+DATE:        April 2026
+
+================================================================================
+                         SECTION 1: WHAT IS THIS PROJECT?
+================================================================================
+
+IntelliRecruit AI is a full-stack online interview proctoring platform.
+
+A candidate sits in front of their webcam and answers AI-voice-driven interview
+questions. While they answer, the system silently watches them using computer
+vision (machine vision) to detect cheating behaviours like:
+
+  - Looking away from the screen (gaze deviation)
+  - Turning their head away (head pose change)
+  - Someone else entering the frame (multiple faces)
+  - Face disappearing (candidate left the frame)
+  - A phone visible on screen (phone detection)
+  - Tab switching, copy-paste, hotkey abuse (browser security)
+
+At the end, the candidate gets an INTEGRITY SCORE from 0 to 100.
+HR can download a full report (JSON + recorded video).
+
+--------------------------------------------------------------------------------
+TWO DETECTION ENGINES RUNNING IN PARALLEL:
+--------------------------------------------------------------------------------
+
+1. BROWSER-NATIVE ENGINE (useBrowserFaceDetection.ts)
+   - Written in TypeScript/JavaScript
+   - Runs INSIDE the browser using WebAssembly (WASM)
+   - Uses MediaPipe FaceMesh loaded from CDN
+   - NO server needed — works offline after CDN loads
+   - Handles: Gaze, Head Pose, Face Count, Phone Detection (COCO-SSD)
+
+2. PYTHON ML API ENGINE (ml_pipeline/ + inference/api.py)
+   - Written in Python
+   - Runs as a FastAPI server on localhost:5001
+   - Handles: ArcFace identity verification, solvePnP head pose, YOLO phone
+   - OPTIONAL — browser engine works even without the Python server
+
+================================================================================
+                    SECTION 2: FULL TECHNOLOGY STACK
+================================================================================
+
+FRONTEND:
+  - React 18 (UI framework)
+  - TypeScript 5 (type-safe JavaScript)
+  - react-router-dom (page navigation)
+  - WebRTC / MediaRecorder API (webcam access + video recording)
+  - Web Speech Synthesis API (AI voice for asking questions)
+
+BROWSER ML:
+  - MediaPipe FaceMesh (via CDN, runs as WASM)
+  - TensorFlow.js (for COCO-SSD phone detection in browser)
+  - COCO-SSD (object detection model for phone detection)
+
+PYTHON BACKEND:
+  - FastAPI (REST API server)
+  - Uvicorn (ASGI server to run FastAPI)
+  - OpenCV (cv2) — image processing, color conversion, solvePnP
+  - MediaPipe (Python version) — FaceMesh, Face Detection
+  - InsightFace + ArcFace — face recognition / identity verification
+  - ONNX Runtime — runs ArcFace model efficiently on CPU
+  - NumPy — math operations, arrays, cosine similarity
+  - YOLOv8 (Ultralytics) — phone detection (currently placeholder)
+  - Python deque (collections) — rolling window buffers
+
+================================================================================
+               SECTION 3: PROJECT FOLDER STRUCTURE EXPLAINED
+================================================================================
+
+intell-Interview/
+│
+├── src/                         <-- React/TypeScript frontend
+│   ├── pages/
+│   │   ├── Welcome.tsx          Landing page (name entry)
+│   │   ├── DeviceValidation.tsx Camera/mic/lighting pre-checks
+│   │   ├── Interview.tsx        MAIN page — wires camera + detection + TTS
+│   │   └── Results.tsx          Final integrity report + video download
+│   │
+│   ├── hooks/
+│   │   ├── useBrowserFaceDetection.ts  ★ CORE — all ML logic in browser
+│   │   ├── useCheatingDetection.ts     Hook that calls Python API
+│   │   ├── useInterviewFlow.ts         Question state machine + TTS
+│   │   ├── useAudioAnalysis.ts         Microphone volume meter
+│   │   ├── useVideoRecorder.ts         MediaRecorder wrapper
+│   │   ├── useMediaDevices.ts          Camera device enumeration
+│   │   ├── useTextToSpeech.ts          TTS helper
+│   │   ├── useBeforeUnload.ts          Warns on tab close
+│   │   └── useDeviceValidation.ts      Pre-interview device checks
+│   │
+│   ├── services/
+│   │   ├── cheatingDetectionService.ts HTTP client for Python API
+│   │   ├── videoRecordingService.ts    Records + exports .webm video
+│   │   ├── ttsService.ts               AI voice (Web Speech Synthesis)
+│   │   └── speechAnalysisService.ts    WPM, pause rate, filler words
+│   │
+│   ├── components/
+│   │   ├── Interview/                  Camera feed, question card, controls
+│   │   ├── Layout/                     Page layout wrappers
+│   │   ├── Security/                   Tab-switch / copy-paste blockers
+│   │   └── UI/                         Common UI components
+│   │
+│   ├── types/
+│   │   ├── cheating.ts                 TypeScript interfaces for ML results
+│   │   └── security.ts                 Security event types
+│   │
+│   └── data/questions.ts              Interview question bank (array of Qs)
+│
+├── ml_pipeline/                 <-- Python Machine Vision modules
+│   └── modules/
+│       ├── detection_engine.py  ★ Main orchestrator — calls all modules
+│       ├── face_detection.py    MediaPipe face detect + ArcFace identity
+│       ├── pose_estimation.py   FaceMesh landmarks + solvePnP head pose
+│       ├── gaze_tracking.py     Iris landmark ratio → gaze direction
+│       ├── behavior_analysis.py Rolling window buffers + statistics
+│       └── phone_detection.py   YOLOv8 phone detection (placeholder)
+│
+├── inference/
+│   ├── api.py                   FastAPI REST server (the Python backend)
+│   └── yolov8n.pt               YOLOv8 Nano pretrained weights (6.5 MB)
+│
+├── package.json                 Node.js dependencies
+├── tsconfig.json                TypeScript config
+├── tailwind.config.js           TailwindCSS config
+└── README.md                    Setup instructions
+
+================================================================================
+              SECTION 4: MACHINE VISION CONCEPTS USED (DETAILED)
+================================================================================
+
+------------------------------------------------------------------------
+CONCEPT 1: FACIAL LANDMARK DETECTION (MediaPipe FaceMesh)
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  A facial landmark is a specific key point on a face — like the tip of
+  the nose, the corner of an eye, the center of the iris, etc.
+  MediaPipe FaceMesh detects 478 such points on any human face in an image.
+
+HOW IT WORKS INTERNALLY:
+  MediaPipe uses a two-step neural network pipeline:
+    Step 1: A fast face detector finds WHERE the face is in the image.
+    Step 2: A landmark regression network predicts all 478 landmark
+            (x, y, z) coordinates within that face region.
+  This runs in real-time using WebAssembly (WASM) in the browser.
+
+HOW WE USE IT (Python — pose_estimation.py):
+  ```python
+  import mediapipe as mp
+  mp_face_mesh = mp.solutions.face_mesh
+  self.face_mesh = mp_face_mesh.FaceMesh(
+      static_image_mode=False,
+      max_num_faces=1,
+      refine_landmarks=True,       # <-- enables iris landmarks 468-477
+      min_detection_confidence=0.5,
+      min_tracking_confidence=0.5
+  )
+  results = self.face_mesh.process(rgb_image)
+  landmarks = results.multi_face_landmarks[0]
+  landmarks_array = np.array([[lm.x * w, lm.y * h, lm.z] for lm in landmarks.landmark])
+  ```
+  `refine_landmarks=True` is CRITICAL — it adds iris landmarks 468–477
+  which are needed for gaze tracking.
+
+HOW WE USE IT (Browser — useBrowserFaceDetection.ts):
+  ```javascript
+  const fm = new FaceMesh({ locateFile: f => `cdn.../face_mesh/${f}` });
+  fm.setOptions({ maxNumFaces: 3, refineLandmarks: true, ...});
+  fm.onResults(handleResults);  // callback fired after each frame
+  fm.send({ image: videoElement });  // send video frame
+  ```
+  The results object contains `multiFaceLandmarks` — an array of faces,
+  each containing 478 landmark objects with x, y, z (normalized 0.0–1.0).
+
+KEY LANDMARK INDICES USED IN THIS PROJECT:
+  Index 1   = Nose tip
+  Index 10  = Forehead center
+  Index 33  = Left eye outer corner (ear side)
+  Index 133 = Left eye inner corner (nose side)
+  Index 152 = Chin
+  Index 234 = Left cheek
+  Index 263 = Right eye outer corner (ear side)
+  Index 362 = Right eye inner corner (nose side)
+  Index 454 = Right cheek
+  Index 468 = Left iris center
+  Index 473 = Right iris center
+
+------------------------------------------------------------------------
+CONCEPT 2: EYE GAZE TRACKING (Iris Ratio Method)
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  Gaze tracking determines where a person is looking — LEFT, CENTER, or
+  RIGHT — by analysing where the iris sits inside the eye socket.
+
+THE CORE IDEA:
+  Imagine the eye socket as a horizontal strip. If the iris is near the
+  left corner → person is looking LEFT. Near the right corner → RIGHT.
+  We calculate a ratio:
+    ratio = (iris_x - left_corner_x) / (right_corner_x - left_corner_x)
+  This gives a value 0.0 to 1.0:
+    < 0.40 → LEFT
+    0.40 to 0.60 → CENTER
+    > 0.60 → RIGHT
+
+HOW WE USE IT (Python — gaze_tracking.py):
+  ```python
+  # Iris landmark indices
+  LEFT_IRIS  = [468, 469, 470, 471]  # 4 points around left iris
+  RIGHT_IRIS = [472, 473, 474, 475]  # 4 points around right iris
+
+  def get_iris_center(self, landmarks, indices):
+      points = landmarks[indices]
+      return (np.mean(points[:, 0]), np.mean(points[:, 1]))
+
+  def calculate_ratio(self, iris, inner, outer, flip=False):
+      eye_width = abs(outer[0] - inner[0])
+      lo = min(inner[0], outer[0])
+      ratio = (iris[0] - lo) / eye_width
+      if flip: ratio = 1.0 - ratio
+      return float(np.clip(ratio, 0.0, 1.0))
+
+  # Average both eyes
+  avg_ratio = (left_ratio + right_ratio) / 2.0
+  if avg_ratio < 0.35: direction = 'LEFT'
+  elif avg_ratio > 0.65: direction = 'RIGHT'
+  else: direction = 'CENTER'
+  ```
+
+HOW WE USE IT (Browser — useBrowserFaceDetection.ts):
+  ```javascript
+  function irisRatio(iris, outerCorner, innerCorner) {
+    const lo = Math.min(outerCorner.x, innerCorner.x);
+    const hi = Math.max(outerCorner.x, innerCorner.x);
+    const w  = hi - lo;
+    return w < 0.003 ? 0.5 : Math.max(0, Math.min(1, (iris.x - lo) / w));
+  }
+  const lr = irisRatio(lms[468], lms[33], lms[133]);   // left eye
+  const rr = irisRatio(lms[473], lms[362], lms[263]);  // right eye
+  const ratio = (lr + rr) / 2;
+  ```
+
+3-FRAME MAJORITY VOTE (anti-flicker):
+  Instead of trusting the raw gaze every frame, we store the last 3 frames
+  and take a majority vote. If 2 out of 3 say LEFT → it's LEFT.
+  This prevents a single noisy frame from triggering a false alarm.
+  ```javascript
+  gazeHist.current.push(rawGaze);
+  if (gazeHist.current.length > 3) gazeHist.current.shift();
+  const lv = v.filter(x => x === 'LEFT').length;
+  const rv = v.filter(x => x === 'RIGHT').length;
+  ```
+
+IMPORTANT: Gaze tracking is only done when the head is FORWARD.
+  If the head is turned (|yaw| > 15°), gaze is inferred from head
+  direction instead of iris position (because iris ratio becomes
+  unreliable when face is at an angle).
+
+------------------------------------------------------------------------
+CONCEPT 3: HEAD POSE ESTIMATION
+------------------------------------------------------------------------
+
+There are TWO different methods used — one in the browser and one in Python.
+
+--- METHOD A: GEOMETRIC RATIO (Browser) ---
+
+WHAT IS IT?
+  A clever, lightweight way to estimate head rotation using just the
+  positions of the nose and cheeks without any 3D math.
+
+YAW (left-right rotation):
+  ```
+  lw = nose.x − left_cheek.x    (left half of face width)
+  rw = right_cheek.x − nose.x   (right half of face width)
+  yaw = ((rw − lw) / (lw + rw)) × 90°
+  ```
+  When head turns RIGHT → right half of face shrinks → rw < lw → yaw negative.
+  When head turns LEFT  → left half shrinks → lw < rw → yaw positive.
+
+PITCH (up-down tilt):
+  ```
+  ratio = (nose.y − forehead.y) / (chin.y − forehead.y)
+  pitch = −(ratio − neutral) × 90°
+  ```
+  `neutral` is calibrated per-person from the first 15 frames (see below).
+
+ROLL (tilt/lean):
+  ```javascript
+  function computeRoll(lms) {
+    const lo = lms[33];   // left eye outer
+    const ro = lms[263];  // right eye outer
+    return Math.atan2(ro.y - lo.y, ro.x - lo.x) * (180 / Math.PI);
+  }
+  ```
+  If both eyes are at the same height → roll = 0°. If head tilts → roll ≠ 0.
+
+--- METHOD B: solvePnP (Python) ---
+
+WHAT IS IT?
+  OpenCV's `solvePnP` (Perspective-n-Point) is a computer vision algorithm
+  that estimates the 3D rotation and translation of an object given:
+    - Known 3D points of the object (a generic face model in mm)
+    - Their corresponding 2D projections in the image
+
+HOW WE USE IT (pose_estimation.py):
+  ```python
+  # Step 1: Define 3D world coordinates of 6 facial landmarks (in mm)
+  self.model_points = np.array([
+      [0.0, 0.0, 0.0],         # Nose tip
+      [0.0, -330.0, -65.0],    # Chin
+      [-225.0, 170.0, -135.0], # Left eye left corner
+      [225.0, 170.0, -135.0],  # Right eye right corner
+      [-150.0, -150.0, -125.0],# Left mouth corner
+      [150.0, -150.0, -125.0]  # Right mouth corner
+  ], dtype=np.float64)
+
+  # Step 2: Find corresponding 2D pixel positions from FaceMesh
+  image_points = landmarks_array[[1, 152, 33, 263, 61, 291], :2]
+
+  # Step 3: Build approximate camera matrix (assumes no lens distortion)
+  focal_length = image_width
+  camera_matrix = np.array([[focal_length, 0, cx], [0, focal_length, cy], [0,0,1]])
+
+  # Step 4: Solve for rotation vector
+  success, rotation_vector, translation_vector = cv2.solvePnP(
+      self.model_points, image_points, camera_matrix, dist_coeffs,
+      flags=cv2.SOLVEPNP_ITERATIVE
+  )
+  ```
+
+RODRIGUES ROTATION (converting rotation vector to matrix):
+  ```python
+  rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+  ```
+  `cv2.Rodrigues` converts a compact 3-element rotation vector (axis-angle
+  representation) into a full 3×3 rotation matrix R.
+
+EULER ANGLE EXTRACTION:
+  From the rotation matrix R we extract yaw, pitch, roll:
+  ```python
+  yaw   = np.degrees(np.arctan2(R[1,0], R[0,0]))
+  pitch = np.degrees(np.arcsin(-np.clip(R[2,0], -1.0, 1.0)))
+  roll  = np.degrees(np.arctan2(R[2,1], R[2,2]))
+  ```
+  These angles describe how the head is rotated in 3D space.
+
+------------------------------------------------------------------------
+CONCEPT 4: EMA — EXPONENTIAL MOVING AVERAGE (Temporal Smoothing)
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  Landmark positions jitter frame-to-frame due to camera noise, lighting
+  changes, small head micro-movements. Raw values would cause constant
+  false positives. EMA smooths this noise by giving more weight to the
+  current value but also remembering recent history.
+
+  Formula:  smoothed = α × raw + (1 − α) × previous_smoothed
+  Where α = 0.35 (our choice)
+
+  α = 1.0 means "trust only the current frame" (no smoothing)
+  α = 0.0 means "trust only history" (never updates)
+  α = 0.35 means moderate smoothing — follows trends but ignores spikes.
+
+HOW WE USE IT (Browser — useBrowserFaceDetection.ts):
+  ```javascript
+  const EMA_ALPHA = 0.35;
+
+  // Initialize on first frame
+  emaYaw.current = rawYaw;
+
+  // Every subsequent frame
+  emaYaw.current   = EMA_ALPHA * rawYaw   + (1 - EMA_ALPHA) * emaYaw.current;
+  emaPitch.current = EMA_ALPHA * rawPitch + (1 - EMA_ALPHA) * emaPitch.current;
+  emaRoll.current  = EMA_ALPHA * rawRoll  + (1 - EMA_ALPHA) * emaRoll.current;
+  ```
+  Applied separately to yaw, pitch, and roll for independent smoothing.
+
+------------------------------------------------------------------------
+CONCEPT 5: PITCH AUTO-CALIBRATION (Per-Person Neutral Pose)
+------------------------------------------------------------------------
+
+PROBLEM:
+  Different people hold their head at different "natural" angles. One person
+  might naturally look slightly downward. If we use a fixed threshold, their
+  normal posture would be flagged as "looking down."
+
+SOLUTION — MEDIAN CALIBRATION:
+  We collect measurements from the first 15 frames and compute the MEDIAN
+  as the person's "neutral" pitch. Then all pitch measurements are relative
+  to this baseline.
+
+HOW WE USE IT (Browser — useBrowserFaceDetection.ts):
+  ```javascript
+  const CALIBRATION_FRAMES = 15;
+
+  if (!pitchCalibDone.current) {
+      const ratio = (nose.y - forehead.y) / (chin.y - forehead.y);
+      pitchCalibBuf.current.push(ratio);
+      if (pitchCalibBuf.current.length >= CALIBRATION_FRAMES) {
+          const sorted = [...pitchCalibBuf.current].sort((a, b) => a - b);
+          pitchNeutral.current = sorted[Math.floor(sorted.length / 2)]; // median
+          pitchCalibDone.current = true;
+      }
+  }
+  ```
+  We use median (not mean) because it's robust to outlier frames where
+  the person may have moved suddenly during calibration.
+
+------------------------------------------------------------------------
+CONCEPT 6: EDGE DETECTION ON COUNTERS
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  In signal processing, "edge detection" means detecting a CHANGE in state
+  rather than the state itself. We use this pattern for counting events.
+
+WHY WE NEED IT:
+  If a person looks LEFT for 5 consecutive frames, we want to count that
+  as ONE look-away event, not 5. Without edge detection, every frame that
+  sees "gaze=LEFT" would increment the counter.
+
+HOW WE USE IT (useBrowserFaceDetection.ts + useCheatingDetection.ts):
+  ```javascript
+  // prevGaze stores the PREVIOUS frame's gaze direction
+  const prevGaze = useRef(null);
+
+  if (g !== prevGaze.current) {         // ONLY on STATE CHANGE
+      if (g === 'LEFT')  { gazeLeftCount += 1; totalLookAways += 1; }
+      if (g === 'RIGHT') { gazeRightCount += 1; totalLookAways += 1; }
+      prevGaze.current = g;             // update previous state
+  }
+  ```
+  The same pattern is used for head turns, face absence, multiple faces,
+  and phone detection — all stored as useRef flags (edgeYL, edgeYR, etc.).
+
+------------------------------------------------------------------------
+CONCEPT 7: FACE DETECTION (MediaPipe Face Detection)
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  Before we can track landmarks or verify identity, we first need to know
+  HOW MANY faces are in the frame.
+
+HOW WE USE IT (Python — face_detection.py):
+  ```python
+  mp_face_detection = mp.solutions.face_detection
+  self.face_detection = mp_face_detection.FaceDetection(
+      model_selection=1,               # model 1 = full range (up to 5m)
+      min_detection_confidence=0.7
+  )
+  rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # MediaPipe needs RGB
+  results = self.face_detection.process(rgb)
+
+  for detection in results.detections:
+      bbox = detection.location_data.relative_bounding_box
+      x1 = int(bbox.xmin * w)
+      y1 = int(bbox.ymin * h)
+      x2 = int((bbox.xmin + bbox.width) * w)
+      y2 = int((bbox.ymin + bbox.height) * h)
+  ```
+
+  IMPORTANT NOTE: cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+  OpenCV reads images in BGR format (Blue-Green-Red channel order).
+  MediaPipe expects RGB. This conversion is done in every module that
+  passes images to MediaPipe.
+
+------------------------------------------------------------------------
+CONCEPT 8: ARCFACE — IDENTITY VERIFICATION (Face Recognition)
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  ArcFace is a state-of-the-art deep learning model for face recognition.
+  It converts any face image into a 512-dimensional embedding vector.
+  Two images of the same person will produce similar vectors; different
+  people produce very different vectors.
+
+WHAT IS AN EMBEDDING?
+  An embedding is a dense numeric vector (list of 512 numbers) that
+  captures the unique characteristics of a face. Every face maps to a
+  point in 512-dimensional space. Similar faces → nearby points.
+
+HOW WE USE IT (Python — face_detection.py):
+  ```python
+  from insightface.app import FaceAnalysis
+
+  # Load ArcFace model (buffalo_l = large, high accuracy model)
+  self.app = FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
+  self.app.prepare(ctx_id=-1, det_size=(640, 640))
+
+  # STEP 1: On session start, store embedding of the candidate
+  def set_reference(self, image):
+      faces = self.app.get(rgb_image)
+      if len(faces) == 1:
+          self.reference_embedding = faces[0].embedding  # 512-dim vector
+          return True
+
+  # STEP 2: Each frame, compare detected face to stored reference
+  def verify(self, image, threshold=0.6):
+      faces = self.app.get(rgb_image)
+      for face in faces:
+          similarity = np.dot(face.embedding, self.reference_embedding) / (
+              np.linalg.norm(face.embedding) * np.linalg.norm(self.reference_embedding)
+          )
+          is_same_person = similarity >= threshold
+  ```
+
+COSINE SIMILARITY:
+  cos(θ) = (A · B) / (|A| × |B|)
+  
+  - Returns a value between -1 and 1
+  - 1.0 = identical vectors (same person)
+  - 0.0 = orthogonal (unrelated)
+  - We use threshold 0.6 — if similarity >= 0.6, it's the same person
+  
+  NumPy operations used:
+    np.dot(a, b)          = dot product of two vectors
+    np.linalg.norm(a)     = Euclidean length (magnitude) of vector
+
+------------------------------------------------------------------------
+CONCEPT 9: YOLOv8 — PHONE DETECTION (Object Detection)
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  YOLO (You Only Look Once) is a real-time object detection algorithm.
+  YOLOv8 is the latest version by Ultralytics. It can detect 80 different
+  object types from the COCO dataset simultaneously in one pass.
+
+  COCO Class 67 = "cell phone" — this is what we target.
+
+HOW IT WAS DESIGNED (phone_detection.py):
+  The full implementation was planned to use:
+  ```python
+  from ultralytics import YOLO
+  model = YOLO('yolov8n.pt')   # nano model, 6.5MB
+  results = model(image)
+  for r in results:
+      for box in r.boxes:
+          if int(box.cls) == 67 and float(box.conf) > 0.75:  # phone > 75% conf
+              phone_detected = True
+  ```
+  The yolov8n.pt file (6.5MB) is already in the inference/ folder.
+  Currently the Python version is a placeholder due to YOLO loading issues.
+
+BROWSER PHONE DETECTION (using COCO-SSD + TensorFlow.js):
+  The browser actually has working phone detection using COCO-SSD:
+  ```javascript
+  // Load TensorFlow.js first, then COCO-SSD model
+  const model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+
+  // Run every 6 frames (not every frame — expensive)
+  const PHONE_DETECT_EVERY = 6;
+  const preds = await cocoRef.current.detect(canvas);
+  const found = preds.some(p => p.class === 'cell phone' && p.score > 0.35);
+  ```
+  MobileNetV2 is a lightweight CNN architecture designed for mobile/browser.
+  It sacrifices some accuracy for speed, making it suitable for real-time use.
+
+------------------------------------------------------------------------
+CONCEPT 10: ROLLING WINDOW BUFFERS (Temporal Behavior Analysis)
+------------------------------------------------------------------------
+
+WHAT IS IT?
+  Instead of making cheating decisions on a single frame, we collect data
+  over a WINDOW of recent frames and analyse PATTERNS over time.
+  This prevents single-frame anomalies from triggering false alarms.
+
+IMPLEMENTATION — Python deque (behavior_analysis.py):
+  ```python
+  from collections import deque
+
+  class BehaviorAnalyzer:
+      def __init__(self, window_size=10):
+          self.gaze_buffer     = deque(maxlen=window_size)  # last 10 frames
+          self.head_pose_buffer = deque(maxlen=window_size)
+          self.phone_buffer    = deque(maxlen=window_size)
+          self.face_count_buffer = deque(maxlen=window_size)
+
+      def update(self, gaze_direction, head_pose, phone_visible, face_count):
+          self.gaze_buffer.append(gaze_direction)
+          self.head_pose_buffer.append(head_pose)
+          self.phone_buffer.append(phone_visible)
+          self.face_count_buffer.append(face_count)
+  ```
+  `deque(maxlen=10)` automatically drops the OLDEST item when a new one
+  is added, keeping only the last 10 frames in memory at all times.
+
+STATISTICS COMPUTED ON THE WINDOW:
+  ```python
+  # What % of recent frames showed gaze off-center?
+  def get_gaze_deviation(self):
+      off_center = sum(1 for g in self.gaze_buffer if g and g != 'CENTER')
+      return off_center / len(self.gaze_buffer)
+
+  # How stable is the head? (std dev of yaw angles)
+  def get_head_stability(self):
+      yaws = [p['yaw'] for p in self.head_pose_buffer if p is not None]
+      return float(np.std(yaws))
+
+  # How long was the phone visible? (seconds)
+  def get_phone_duration(self, fps=30):
+      frames_with_phone = sum(self.phone_buffer)
+      return frames_with_phone / fps
+  ```
+
+SUSTAINED ANOMALY DETECTION:
+  ```python
+  def detect_sustained_anomaly(self, anomaly_type, duration_threshold=1.0, fps=30):
+      required_frames = int(duration_threshold * fps)
+      # ... select buffer by type ...
+      recent = buffer[-required_frames:]
+      return sum(recent) >= required_frames * 0.8  # 80% of frames must show it
+  ```
+  This means: "the anomaly must be present in 80% of the last N frames"
+  before we fire a violation. Prevents fleeting glances from triggering alerts.
+
+------------------------------------------------------------------------
+CONCEPT 11: WEIGHTED SCORING SYSTEM (Python Engine)
+------------------------------------------------------------------------
+
+The Python engine combines all signals into a single cheating score 0.0–1.0.
+
+WEIGHTS:
+  Phone detected:    45%  (very strong signal — phone = cheating)
+  Multiple faces:    25%  (someone coaching next to them)
+  Gaze deviation:    20%  (reading notes/second screen)
+  Head pose:         10%  (turning to talk to someone)
+
+CALCULATION (detection_engine.py):
+  ```python
+  self.weights = { 'phone': 0.45, 'multi_face': 0.25, 'gaze': 0.20, 'head_pose': 0.10 }
+
+  def calculate_score(self):
+      scores = {}
+      scores['phone']      = min(1.0, phone_duration / 3.0)       # max at 3 sec
+      scores['multi_face'] = multi_face_pct                         # 0.0 to 1.0
+      scores['gaze']       = max(0.0, (gaze_deviation - 0.2) / 0.3) # >20% baseline
+      scores['head_pose']  = min(1.0, head_stability / 30.0)        # max at 30° std
+
+      total = sum(scores[k] * self.weights[k] for k in scores)
+      return total  # 0.0 = honest, 1.0 = definitely cheating
+
+  integrity_score = (1 - cheating_score) * 100  # convert to 0-100
+  ```
+
+FLAGGING AS CHEATING:
+  ```python
+  def should_flag_cheating(self, score, violations):
+      has_critical = any(v['severity'] in ['CRITICAL', 'HIGH'] for v in violations)
+      return score > 0.7 and has_critical  # BOTH conditions must be true
+  ```
+  We require BOTH score > 70% AND at least one critical violation.
+  Conservative approach to avoid false positives.
+
+------------------------------------------------------------------------
+CONCEPT 12: INTEGRITY SCORE — TIERED PENALTY (Browser Engine)
+------------------------------------------------------------------------
+
+The browser engine uses a DIFFERENT, simpler scoring system.
+  It counts EVENTS (discrete occurrences) and deducts points:
+
+  ```javascript
+  function computeScore(c) {
+    const lookAwayPen  = c.totalLookAways <= 2 
+        ? c.totalLookAways * 1        // first 2 look-aways cost 1pt each
+        : 2 + (c.totalLookAways - 2) * 3; // after that, 3pts each
+    const headTurnPen  = c.totalHeadTurns <= 3 ? 0 : (c.totalHeadTurns - 3) * 4;
+    const absencePen   = c.faceAbsenceCount * 6;     // face gone = -6pts each
+    const multiFacePen = c.multiFaceCount * 10;      // extra face = -10pts each
+    const phonePen     = c.phoneDetectedCount * 15;  // phone = -15pts each
+    return Math.max(0, Math.round(100 - lookAwayPen - headTurnPen - ...));
+  }
+  ```
+
+  Grace period: First 2 look-aways and 3 head-turns are FREE.
+  This accounts for natural glances at questions or stretching.
+
+  RISK LEVELS:
+    80-100 → GREEN (LOW risk)   — Candidate performed well
+    60-79  → YELLOW (MEDIUM)    — Some concerns, review recommended
+    40-59  → ORANGE (HIGH)      — Multiple violations
+    0-39   → RED (CRITICAL)     — Manual review required
+
+------------------------------------------------------------------------
+CONCEPT 13: FASTAPI REST API (Python Backend)
+------------------------------------------------------------------------
+
+FastAPI is a modern Python web framework for building REST APIs.
+It uses async/await for handling multiple requests concurrently.
+
+ENDPOINTS (inference/api.py):
+  GET  /              → Health check (is server running?)
+  POST /set_reference → Upload first frame JPEG → register candidate face
+  POST /analyze       → Upload video frame → returns full detection result
+  POST /reset         → Reset the detection engine for a new candidate
+  GET  /status        → Return current weights and engine state
+
+HOW A FRAME IS ANALYZED:
+  ```python
+  @app.post("/analyze")
+  async def analyze_frame(file: UploadFile = File(...)):
+      contents = await file.read()            # read uploaded file bytes
+      nparr = np.frombuffer(contents, np.uint8)  # convert to numpy array
+      img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)  # decode JPEG→BGR image
+      result = engine.process_frame(img)       # run full ML pipeline
+      return {"success": True, **result}
+  ```
+
+  `np.frombuffer` converts raw bytes to a flat numpy uint8 array.
+  `cv2.imdecode` decodes a JPEG/PNG from memory (not a file) into a BGR image.
+
+CORS MIDDLEWARE:
+  ```python
+  app.add_middleware(CORSMiddleware, allow_origins=["*"], ...)
+  ```
+  This allows the React frontend (on port 3000) to call the Python API
+  (on port 5001) — normally browsers block cross-origin requests.
+
+------------------------------------------------------------------------
+CONCEPT 14: OPENCV IMAGE PROCESSING (cv2)
+------------------------------------------------------------------------
+
+OpenCV (cv2) is used throughout the Python pipeline for:
+
+1. COLOR SPACE CONVERSION:
+   ```python
+   rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+   ```
+   OpenCV loads images as BGR. MediaPipe and InsightFace expect RGB.
+
+2. IMAGE DECODING FROM BYTES:
+   ```python
+   nparr = np.frombuffer(contents, np.uint8)
+   img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+   ```
+
+3. solvePnP (see Concept 3 above)
+
+4. Rodrigues rotation conversion:
+   ```python
+   rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+   ```
+
+------------------------------------------------------------------------
+CONCEPT 15: BROWSER SECURITY (Tab/Copy-Paste Detection)
+------------------------------------------------------------------------
+
+Beyond computer vision, the front-end also monitors browser events:
+
+  - Tab switching: `document.addEventListener('visibilitychange', ...)`
+  - Copy attempts: `document.addEventListener('copy', ...)`
+  - Paste attempts: `document.addEventListener('paste', ...)`
+  - Right-click: `document.addEventListener('contextmenu', e => e.preventDefault())`
+  - Suspicious hotkeys: Ctrl+C, Ctrl+V, Ctrl+Tab, F12 (DevTools)
+  - Page unload warning: `window.addEventListener('beforeunload', ...)`
+
+These events are counted and added to the violation report. 
+
+================================================================================
+               SECTION 5: DATA FLOW — HOW A FRAME IS PROCESSED
+================================================================================
+
+BROWSER ENGINE FLOW (every 700ms):
+  1. setInterval fires every 700ms
+  2. `processFrame()` is called
+  3. Current video frame is sent to FaceMesh: `fm.send({ image: video })`
+  4. FaceMesh WASM runs detection asynchronously
+  5. `handleResults(results)` callback fires with 478 landmarks
+  6. Compute raw yaw, pitch, roll (geometric ratio)
+  7. Apply EMA smoothing
+  8. Compute iris gaze ratio (if head is forward)
+  9. Apply 3-frame majority vote to gaze
+  10. Update counters (edge-detected)
+  11. Compute integrity score
+  12. Update React state → UI re-renders with new values
+  Every 6 frames: also run COCO-SSD phone detection (more expensive)
+
+PYTHON API FLOW (called by browser every 800ms when server is running):
+  1. Browser captures canvas from video element
+  2. Canvas converted to Blob (JPEG)
+  3. POST /analyze with JPEG as multipart upload
+  4. FastAPI receives request, decodes JPEG to NumPy BGR array
+  5. `detection_engine.process_frame(image)` called
+  6. Face detection → how many faces?
+  7. ArcFace verify → is it the same person?
+  8. FaceMesh + solvePnP → yaw, pitch, roll
+  9. Iris ratio → gaze direction
+  10. YOLOv8 → phone visible?
+  11. BehaviorAnalyzer.update() → push to rolling window buffers
+  12. calculate_score() → weighted cheating score
+  13. detect_violations() → list of specific violations
+  14. should_flag_cheating() → boolean
+  15. Return JSON result to browser
+  16. Browser updates UI and counters
+
+================================================================================
+             SECTION 6: KEY PYTHON LIBRARIES & WHY WE USE THEM
+================================================================================
+
+mediapipe     - Google's ML framework for face/landmark detection
+               Runs a TFLite model under the hood. Pre-built for efficiency.
+
+opencv-python - Computer vision library. Image I/O, color conversion, geometry.
+               solvePnP, Rodrigues, imdecode/imencode all come from here.
+
+insightface   - ArcFace face recognition. State-of-the-art accuracy.
+               Downloads the 'buffalo_l' model (~300MB) on first run.
+
+onnxruntime   - Runs ONNX format ML models efficiently on CPU.
+               InsightFace uses it internally to run ArcFace inference.
+
+numpy         - Fundamental math library. Arrays, dot products, norms, std, clip.
+               Used everywhere for numeric calculations.
+
+fastapi       - Modern async Python web framework. Auto-generates OpenAPI docs.
+               Type-annotated responses via Pydantic models.
+
+uvicorn       - ASGI server. Runs the FastAPI application with async support.
+
+ultralytics   - YOLOv8 package. Object detection with pretrained COCO model.
+               yolov8n.pt = nano model (fastest, smallest, least accurate).
+
+collections.deque - Python built-in. Double-ended queue with maxlen parameter.
+               When maxlen is set, oldest items auto-drop. Perfect for rolling windows.
+
+typing        - Python type hints. Dict, List, Optional, Tuple for code clarity.
+
+dataclasses   - Python built-in. @dataclass decorator creates clean data holder classes.
+               Used for FaceDetection and HeadPose result containers.
+
+================================================================================
+               SECTION 7: KEY DESIGN DECISIONS EXPLAINED
+================================================================================
+
+1. WHY TWO ENGINES?
+   The browser engine works with no server setup — great for demos.
+   The Python engine adds identity verification (ArcFace) which prevents
+   a candidate from switching places with someone else mid-interview.
+
+2. WHY MEDIAPIPE OVER OTHER FACE DETECTORS?
+   MediaPipe runs on macOS ARM (Apple Silicon) without issues. It has
+   WASM support for browsers. ArcFace (insightface) is more accurate
+   for identity but is Python-only. Together they complement each other.
+
+3. WHY EMA INSTEAD OF SIMPLE AVERAGE?
+   EMA is exponentially weighted — recent frames matter more than old ones.
+   Simple average treats a 100-frame-old measurement the same as the
+   current one. EMA adapts faster to real changes while still filtering noise.
+
+4. WHY MEDIAN FOR PITCH CALIBRATION?
+   Median is robust to outliers. If the first 15 frames include 2 frames
+   where the person accidentally looked up, the median won't be skewed.
+   The mean would be — a single extreme value can shift the mean significantly.
+
+5. WHY EDGE DETECTION ON COUNTERS?
+   If we counted every frame, a 5-second gaze deviation would add hundreds
+   to the counter. The counter would be meaningless. With edge detection
+   we count EVENTS (transitions), which is what HR cares about.
+
+6. WHY WINDOW_SIZE=10 FOR BEHAVIOR ANALYSIS?
+   At 1.25 fps polling rate (800ms), 10 frames = ~8 seconds of history.
+   This is enough to detect sustained behaviour without being so long
+   that brief violations early in the session are forgotten too slowly.
+
+================================================================================
+                        SECTION 8: THE INTERVIEW FLOW
+================================================================================
+
+Pages (React Router routes):
+
+  /            → Welcome.tsx     (candidate enters name, accepts terms)
+  /setup       → DeviceValidation.tsx (checks camera, mic, lighting)
+  /interview   → Interview.tsx   (main interview with AI questions + detection)
+  /results     → Results.tsx     (integrity report, download video)
+
+Interview.tsx wires together:
+  - useBrowserFaceDetection  (ML detection)
+  - useInterviewFlow         (question state machine)
+  - useVideoRecorder         (WebRTC recording)
+  - useAudioAnalysis         (mic volume visualization)
+  - Security components      (tab/copy-paste blocking)
+
+The AI interviewer asks questions via:
+  - Web Speech Synthesis API (browser built-in text-to-speech)
+  - Questions are loaded from src/data/questions.ts
+  - useInterviewFlow manages timing, transitions, TTS triggering
+
+================================================================================
+                      SECTION 9: COMPLETE DEPENDENCY LIST
+================================================================================
+
+PYTHON (pip install):
+  fastapi
+  uvicorn
+  python-multipart     (for file uploads in FastAPI)
+  opencv-python        (cv2)
+  mediapipe >= 0.10    (FaceMesh, Face Detection)
+  insightface          (ArcFace face recognition)
+  onnxruntime          (runs ONNX models — needed by insightface)
+  ultralytics          (YOLOv8 — optional, for phone detection)
+  numpy                (math and array operations)
+
+NODE.JS npm packages:
+  react, react-dom     (UI framework)
+  react-router-dom     (client-side routing)
+  typescript           (type-safe JavaScript)
+  @mediapipe/face_mesh (loaded via CDN in browser, not npm)
+  @tensorflow/tfjs     (loaded via CDN — for COCO-SSD)
+  @tensorflow-models/coco-ssd (loaded via CDN — phone detection)
+  tailwindcss          (CSS utility framework)
+
+================================================================================
+                    SECTION 10: HOW TO RUN THE PROJECT
+================================================================================
+
+FRONTEND ONLY (no server needed):
+  npm install
+  npm start
+  → Opens at http://localhost:3000
+
+WITH PYTHON BACKEND:
+  python3.11 -m venv .venv
+  source .venv/bin/activate
+  pip install fastapi uvicorn python-multipart opencv-python mediapipe insightface onnxruntime
+  python inference/api.py
+  → API runs at http://localhost:5001
+  → API docs at http://localhost:5001/docs
+
+  In a new terminal:
+  npm start
+
+================================================================================
+                         SECTION 11: SUMMARY TABLE
+================================================================================
+
+| Concept                | File(s)                      | Library          |
+|------------------------|------------------------------|------------------|
+| Face Mesh 478 points   | pose_estimation.py, browser  | MediaPipe        |
+| Iris Gaze Tracking     | gaze_tracking.py, browser    | MediaPipe + Math |
+| Head Pose solvePnP     | pose_estimation.py           | OpenCV           |
+| Rodrigues Decomp       | pose_estimation.py           | OpenCV           |
+| Geometric Yaw/Pitch    | useBrowserFaceDetection.ts   | Pure Math        |
+| EMA Smoothing          | useBrowserFaceDetection.ts   | Pure JS          |
+| Pitch Calibration      | useBrowserFaceDetection.ts   | Pure JS / Median |
+| 3-Frame Majority Vote  | useBrowserFaceDetection.ts   | Pure JS          |
+| Edge-Detect Counters   | Both hooks                   | useRef flags     |
+| ArcFace Embeddings     | face_detection.py            | InsightFace      |
+| Cosine Similarity      | face_detection.py            | NumPy            |
+| Rolling Window Buffers | behavior_analysis.py         | deque + NumPy    |
+| Sustained Anomaly      | behavior_analysis.py         | deque            |
+| Weighted Scoring       | detection_engine.py          | NumPy            |
+| YOLOv8 Phone Detect    | phone_detection.py           | Ultralytics      |
+| COCO-SSD (browser)     | useBrowserFaceDetection.ts   | TensorFlow.js    |
+| REST API               | inference/api.py             | FastAPI          |
+| Image Decoding         | inference/api.py             | OpenCV + NumPy   |
+| BGR→RGB Conversion     | All Python modules           | OpenCV           |
+| Browser Security       | Security components          | DOM Events       |
+| Video Recording        | useVideoRecorder.ts          | WebRTC API       |
+| TTS (AI voice)         | ttsService.ts                | Web Speech API   |
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================
+Total concepts explained: 15 Machine Vision + 3 System Design
+Total files covered: 15+ source files
+Project: IntelliRecruit AI (intell-Interview)
+Author Documentation: Generated April 2026
+================================================================================

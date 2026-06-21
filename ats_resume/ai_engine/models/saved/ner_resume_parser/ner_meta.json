@@ -1,0 +1,20 @@
+{
+  "labels": [
+    "SKILL",
+    "EXPERIENCE",
+    "COMPANY",
+    "DEGREE",
+    "EDUCATION",
+    "DURATION",
+    "CERT"
+  ],
+  "train_samples": 1861,
+  "val_samples": 310,
+  "test_samples": 311,
+  "test_f1": 0.9663,
+  "test_precision": 0.991,
+  "test_recall": 0.9428,
+  "best_val_f1": 0.9721,
+  "epochs": 15,
+  "training_date": "2026-05-17T23:17:28.266027"
+}

@@ -1,0 +1,49 @@
+# ─── Core AI / ML ─────────────────────────────────────────────────────────────
+torch==2.3.0                      # PyTorch (CPU or CUDA depending on deployment)
+torchvision==0.18.0
+transformers==4.41.0              # HuggingFace transformers
+sentence-transformers==3.0.1      # all-mpnet-base-v2 semantic embeddings
+datasets==2.19.1                  # HuggingFace datasets (for model training)
+accelerate==0.30.0                # HuggingFace accelerate (GPU training)
+
+# ─── NLP ──────────────────────────────────────────────────────────────────────
+spacy==3.7.4                      # NLP pipeline + custom NER
+en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+nltk==3.8.1
+
+# ─── ML / Scoring ──────────────────────────────────────────────────────────────
+xgboost==2.0.3
+scikit-learn==1.5.0
+shap==0.45.1                      # SHAP explainability
+numpy==1.26.4
+scipy==1.13.0
+joblib==1.4.2                     # model serialization / parallelism
+
+# ─── Document Parsing / OCR ────────────────────────────────────────────────────
+pdfplumber==0.11.1                # PDF text extraction (native)
+pytesseract==0.3.10               # OCR fallback for scanned PDFs
+Pillow==10.3.0                    # image manipulation for OCR
+python-docx==1.1.2                # DOCX parsing
+pdfminer.six==20231228            # low-level PDF parsing
+pypdf==4.2.0                      # PDF metadata + page handling
+
+# ─── Vector Store ──────────────────────────────────────────────────────────────
+pgvector==0.2.5                   # pgvector Python client
+sqlalchemy[asyncio]==2.0.30
+
+# ─── Data / Utilities ──────────────────────────────────────────────────────────
+pandas==2.2.2
+networkx==3.3                     # ontology graph
+rapidfuzz==3.9.1                  # fuzzy string matching (skill normalization)
+regex==2024.5.15                  # advanced regex for text parsing
+python-dateutil==2.9.0            # date parsing from resume text
+tqdm==4.66.4
+
+# ─── API serving ──────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# ─── Dev ──────────────────────────────────────────────────────────────────────
+pytest==8.2.0
+pytest-asyncio==0.23.6  

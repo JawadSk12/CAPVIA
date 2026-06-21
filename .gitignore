@@ -1,0 +1,30 @@
+# Environments
+**/venv/
+**/.venv/
+**/env/
+**/.env/
+**/.env.*
+!**/.env.example
+
+# Node / Build Caches
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/.tsconfig.tsbuildinfo
+
+# Python / Tests
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.coverage
+**/htmlcov/
+
+# Logs & Storage
+**/*.log
+storage/
+mongodb_data/
+
+# OS Files
+.DS_Store
+Thumbs.db

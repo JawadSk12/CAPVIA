@@ -1,0 +1,193 @@
+================================================================================
+  INTELLIRECRUIT AI — COMPLETE PROJECT EXPLAINER
+  React + TypeScript + Electron + Local LLM (Ollama) + MediaPipe
+================================================================================
+
+Last Updated: April 2026
+Author note: This document is the ultimate guide to the IntelliRecruit AI project.
+It covers the architecture, the machine vision math, the AI engine, and the 
+Electron kiosk security configuration.
+
+================================================================================
+  SECTION 1 — WHAT IS THIS PROJECT?
+================================================================================
+
+IntelliRecruit AI is an intelligent, secure video-interviewing platform. It acts
+as BOTH the automated AI interviewer and the automated cheating proctor. 
+
+The application runs entirely locally on the machine for maximum privacy, 
+eliminating the need to pay for remote Cloud APIs or send webcam streams to a server.
+
+When a candidate uses the software:
+  1. The app locks the computer in "Kiosk Mode" to prevent cheating.
+  2. A local LLM (Ollama) generates highly contextual, difficulty-scaled questions.
+  3. The AI speaks the questions using the browser's TTS engine.
+  4. The candidate answers the questions verbally on camera.
+  5. The Machine Vision Engine simultaneously tracks their face, eyes, and rotation
+     to detect cheating behaviors (looking at a phone, reading off screen).
+  6. It generates a final visual report with violation logs and an integrity score.
+
+================================================================================
+  SECTION 2 — THE THREE PILLARS OF ARCHITECTURE
+================================================================================
+
+1. THE INTERVIEW ENGINE (OLLAMA)
+Instead of hardcoding questions or using OpenAI, the project triggers 'Ollama', 
+a local Large Language Model runner. It is programmed to generate 8 questions 
+following a strict difficulty progression (from basic definitions up to 
+high-level system architecture).
+
+2. THE PROCTORING ENGINE (MEDIAPIPE FACEMESH)
+The cheating detection happens natively in the browser via WebAssembly (WASM).
+It calculates Head Yaw/Pitch/Roll and Eye Gaze directly in JavaScript frame-by-frame 
+using geometric math against 468 tracked facial landmarks.
+
+3. THE SECURITY WRAPPER (ELECTRON)
+Because a standard web browser isn't secure, the React application is wrapped inside 
+an Electron desktop app. Electron forcibly blocks OS-level shortcuts (like Alt+Tab) 
+and forces the interview into full-screen.
+
+================================================================================
+  SECTION 3 — TOP-LEVEL FILE / FOLDER MAP
+================================================================================
+
+intell-Interview/
+│
+├── src/                  → All React + TypeScript frontend code
+│   ├── components/       → UI Components (Interview, Security Overlays)
+│   ├── hooks/            → Business logic (useBrowserFaceDetection.ts, etc.)
+│   ├── pages/            → Main Views (Interview.tsx, Dashboard, Results.tsx)
+│   └── services/         → Managers (ttsService, questionService)
+│
+├── electron/             → Desktop Application Security Wrapper
+│   ├── lockdown/         
+│   │   ├── focusEnforcer.js   → Catches if the user switches monitors/apps
+│   │   └── keyboardBlocker.js → Blocks native OS keys (Cmd/Windows, Alt+Tab)
+│   └── main.js           → Boots the locked-down Kiosk window
+│
+├── ml_pipeline/          → Legacy Python Backend (For documentation only)
+├── inference/            → Legacy FastAPI Server (No longer active)
+├── public/               → Static assets
+├── package.json          → Node.js dependencies
+└── PROJECT_EXPLAINER.txt → This file
+
+================================================================================
+  SECTION 4 — ELECTRON SECURITY (THE KIOSK MODE)
+================================================================================
+
+Files: electron/lockdown/keyboardBlocker.js & focusEnforcer.js
+
+WHAT IT DOES:
+React alone cannot stop a user from pressing "Alt+Tab" or clicking another window.
+Electron acts as our bridge to the Native OS. 
+
+1. Kiosk Enforcement: Electron launches the React app with `kiosk: true`, completely 
+   hiding the desktop and taking over the entire screen.
+2. Keyboard Blocker: It registers global key commands (e.g. CommandOrControl+Tab) 
+   and intercepts them, returning a block so the OS ignores the shortcut.
+3. Focus Enforcer: If the application window drops focus (e.g., they click a second 
+   monitor), Electron fires a `window-blur` event which instantly alerts the React 
+   app to apply a severe penalty score.
+
+================================================================================
+  SECTION 5 — MACHINE VISION (ANTI-CHEATING MATH)
+================================================================================
+
+File: src/hooks/useBrowserFaceDetection.ts
+(This replaced the old Python server for better speed and privacy)
+
+Every 700ms, the system grabs a frame from the webcam and passes it to 
+the MediaPipe FaceMesh model.
+
+HOW THE MATH WORKS:
+
+1. HEAD ROTATION (Yaw, Pitch, Roll):
+   - Yaw (Looking Left/Right): We calculate the distance from the nose tip to 
+     the left cheek vs the right cheek. The ratio of these distances reveals rotation.
+   - Pitch (Up/Down): We measure the height of the nose relative to the forehead 
+     vs the chin.
+   - Roll (Head tilt): `Math.atan2` applied on the X/Y coordinates of both eyes.
+
+2. EYE GAZE (Are they reading notes?):
+   - MediaPipe provides exact landmarks for the Iris (points 468-477).
+   - We create an inner and outer bounding corner for the left and right eye.
+   - Gaze Ratio = (iris_x - left_eye_inner_corner_x) / total_eye_width.
+   - If Ratio < 0.4, looking Left. If > 0.6, looking Right.
+
+3. TEMPORAL SMOOTHING (Preventing glitches):
+   - We pass the raw angles through an Exponential Moving Average (EMA). This 
+     ensures minor head twitches don't falsely report as cheating.
+
+4. THE INTEGRITY SCORE:
+   - Starts at 100%. 
+   - We apply tiered penalties. Brief look-aways are treated as "thinking" (minor penalty).
+   - Protracted look-down events or head turns trigger massive score drops.
+   - 0 faces or >1 face instantly flags an Integrity Warning.
+
+================================================================================
+  SECTION 6 — HOW THE AI ASKS QUESTIONS (OLLAMA LOCAL LLM)
+================================================================================
+
+File: src/hooks/useInterviewFlow.ts
+
+The system connects to `localhost:11434` (Ollama's default API port). 
+We use the Llama/Mistral models.
+
+THE 8-TIER ALGORITHM:
+We inject a very specific Prompt Engineering template:
+1. The user selects a Job Role on the Dashboard (e.g. "React Developer").
+2. The AI generates exactly 8 questions.
+3. Question 1 begins with simple vocabulary/definitions.
+4. By Question 5, the AI is producing applied logic scenarios.
+5. By Question 8, it asks high-level edge case and architectural questions.
+
+Once the text is generated, `src/services/ttsService.ts` fires the 
+browser's `SpeechSynthesis` unit to read the question out loud.
+
+================================================================================
+  SECTION 7 — THE FRONTEND FLOW
+================================================================================
+
+1. DASHBOARD: The landing page where candidates select the Internship/Role.
+   (This feeds the context variable to the Local LLM).
+   
+2. DEVICE VALIDATION: The system checks camera/mic permissions before proceeding.
+
+3. INTERVIEW.TSX (The core Engine!):
+   - Initializes MediaRecorder to capture the webcam session.
+   - Mounts the MediaPipe FaceMesh canvas.
+   - Coordinates the 8-tier questions.
+   - Tracks the live cheating score in the right-hand panel.
+
+4. RESULTS.TSX:
+   - Stops the recording.
+   - Computes the final integrity Risk assessment (CRITICAL, HIGH, LOW).
+   - Displays a graphical chart of the exact moments cheating suspected. 
+
+================================================================================
+  SECTION 8 — LEGACY PYTHON API (NO LONGER USED)
+================================================================================
+
+Directory: ml_pipeline/ & inference/
+Originally, the project relied on a Python FastAPI server running `InsightFace` 
+and `YOLOv8`. We kept the code for reference, but it is currently disabled because 
+sending video frames via HTTP introduced latency. The browser-native WASM 
+(WebAssembly) MediaPipe approach we use now is 10x faster and secure.
+
+================================================================================
+  SECTION 9 — HOW TO RUN THE PROJECT
+================================================================================
+
+To run as a secure desktop application (Production/Testing Mode):
+1. `npm install`
+2. Make sure Ollama is installed on your OS and the daemon is running.
+3. `npm run build`
+4. `npm run electron:start`
+
+To run purely as a web app (Development Mode):
+1. `npm start`
+(This bypasses the Electron security locks but is easier for UI debugging).
+
+================================================================================
+  END OF PROJECT GUIDE
+================================================================================

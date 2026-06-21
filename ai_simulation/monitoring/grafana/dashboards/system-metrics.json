@@ -1,0 +1,11 @@
+{
+  "id": null,
+  "title": "AI Simulation - System Metrics",
+  "tags": ["ai-simulation"],
+  "panels": [
+    { "id": 1, "title": "CPU Usage", "type": "graph" },
+    { "id": 2, "title": "Memory Usage", "type": "graph" },
+    { "id": 3, "title": "Request Rate", "type": "stat" },
+    { "id": 4, "title": "Error Rate", "type": "stat" }
+  ]
+}

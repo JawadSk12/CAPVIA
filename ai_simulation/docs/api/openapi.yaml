@@ -1,0 +1,34 @@
+openapi: "3.0.3"
+info:
+  title: AI Simulation Engine API
+  version: "1.0.0"
+  description: API for the AI-powered technical assessment platform
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+  - url: https://api.yourdomain.com/api/v1
+    description: Production
+
+paths:
+  /health/:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Login successful

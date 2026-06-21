@@ -1,0 +1,24 @@
+{
+  "best_model": "XGBoost",
+  "features": [
+    "skill_count",
+    "experience_count",
+    "total_experience_months",
+    "has_quantified_achievements",
+    "action_verb_count",
+    "education_count",
+    "education_level",
+    "cert_count",
+    "project_count",
+    "language_count",
+    "has_summary",
+    "summary_length",
+    "has_linkedin",
+    "has_github"
+  ],
+  "test_mae": 1.7275,
+  "test_rmse": 2.185,
+  "test_r2": 0.9475,
+  "trained_on": 2484,
+  "training_date": "2026-05-17T21:12:17.529093"
+}

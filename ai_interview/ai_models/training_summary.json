@@ -1,0 +1,9 @@
+{
+  "results": {
+    "confidence": "success",
+    "cheating": "failed",
+    "skill": "failed",
+    "phone": "skipped (pretrained)"
+  },
+  "total_time_minutes": 2.790135681629181
+}

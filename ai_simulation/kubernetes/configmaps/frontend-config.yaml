@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: ai-simulation
+data:
+  VITE_APP_NAME: "AI Simulation Engine"
+  VITE_ENV: "production"

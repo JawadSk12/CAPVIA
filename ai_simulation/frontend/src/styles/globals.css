@@ -1,0 +1,193 @@
+/* Google Fonts MUST be first — before @tailwind directives */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core palette */
+    --bg-page:      #f8fafc;
+    --bg-card:      #ffffff;
+    --bg-sidebar:   #ffffff;
+    --bg-muted:     #f1f5f9;
+    --bg-hover:     #f8fafc;
+
+    /* Typography */
+    --text-primary:   #0f172a;
+    --text-secondary: #475569;
+    --text-muted:     #94a3b8;
+    --text-link:      #4f46e5;
+
+    /* Accent — deep indigo */
+    --accent:         #4f46e5;
+    --accent-hover:   #4338ca;
+    --accent-light:   #eef2ff;
+    --accent-border:  #c7d2fe;
+
+    /* Secondary — sky blue */
+    --blue:           #2563eb;
+    --blue-light:     #eff6ff;
+    --blue-border:    #bfdbfe;
+
+    /* Borders & shadows */
+    --border:         #e2e8f0;
+    --border-strong:  #cbd5e1;
+    --shadow-sm:      0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+    --shadow-md:      0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-lg:      0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+
+    /* Status colors */
+    --green:          #059669;
+    --green-light:    #ecfdf5;
+    --green-border:   #a7f3d0;
+    --amber:          #d97706;
+    --amber-light:    #fffbeb;
+    --amber-border:   #fde68a;
+    --red:            #dc2626;
+    --red-light:      #fef2f2;
+    --red-border:     #fecaca;
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  html, body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+}
+
+/* ============================================================
+   LIGHT THEME — Dark Tailwind class overrides
+   ============================================================ */
+
+/* Page backgrounds */
+.bg-gray-950   { background-color: var(--bg-page) !important; }
+.bg-gray-900   { background-color: var(--bg-card) !important; }
+.bg-gray-800   { background-color: var(--bg-muted) !important; }
+.bg-gray-700   { background-color: #e2e8f0 !important; }
+
+/* Borders */
+.border-gray-800 { border-color: var(--border) !important; }
+.border-gray-700 { border-color: var(--border-strong) !important; }
+
+/* Text — dark on light */
+.text-white    { color: var(--text-primary) !important; }
+.text-gray-100,
+.text-gray-200,
+.text-gray-300,
+.text-gray-400 { color: var(--text-secondary) !important; }
+.text-gray-500 { color: var(--text-muted) !important; }
+.text-gray-600 { color: #64748b !important; }
+
+/* Violet → Indigo */
+.text-violet-300,
+.text-violet-400,
+.text-violet-500 { color: var(--accent) !important; }
+.bg-violet-500,
+.bg-violet-600   { background-color: var(--accent) !important; }
+.border-violet-500 { border-color: var(--accent-border) !important; }
+
+/* Cyan → Blue */
+.text-cyan-300,
+.text-cyan-400 { color: var(--blue) !important; }
+.bg-cyan-500   { background-color: var(--blue) !important; }
+
+/* Emerald stays readable on light */
+.text-emerald-400,
+.text-emerald-600 { color: #059669 !important; }
+.bg-emerald-500\/10,
+.bg-emerald-50    { background-color: #ecfdf5 !important; }
+
+/* Green/Red/Amber — ensure readability */
+.text-green-400,
+.text-green-600 { color: #16a34a !important; }
+.text-red-400,
+.text-red-600   { color: #dc2626 !important; }
+.text-amber-600,
+.text-yellow-600 { color: #d97706 !important; }
+
+/* ============================================================
+   INPUTS — ensure text is always readable
+   ============================================================ */
+input,
+textarea,
+select {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgb(79 70 229 / 0.12) !important;
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-muted); }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp 0.3s ease forwards; }
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+.animate-blob { animation: blob 15s infinite alternate; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+/* ============================================================
+   SPINNER FIX — border-t-transparent on light bg
+   ============================================================ */
+.border-t-transparent { border-top-color: transparent !important; }
+
+/* ============================================================
+   FONT-MONO / CODE EDITOR — light tinted bg, dark text
+   ============================================================ */
+.font-mono {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+/* ============================================================
+   STATUS BADGE UTILITIES
+   ============================================================ */
+.badge-green  { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.badge-amber  { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+.badge-red    { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.badge-indigo { background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+.badge-blue   { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
