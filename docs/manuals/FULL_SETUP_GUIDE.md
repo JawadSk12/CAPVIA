@@ -131,18 +131,29 @@ cd CAPVIA
 
 The CAPVIA Gateway (`capvia_platform/`) is the central FastAPI service.
 
+> [!IMPORTANT]
+> **exFAT Filesystem Warning:** If this repository resides on an exFAT formatted partition (e.g. an external USB flash drive), creating virtual environments (`venv`) directly inside the project directories will cause package installation and runtime failures (such as `WARNING: Ignoring invalid distribution -fastapi` or `ModuleNotFoundError`). This is because exFAT does not support standard unix file permissions, symlinks, or atomic rename operations correctly.
+>
+> **Fix:** You must create your Python virtual environments on the internal Mac SSD (e.g. at `~/capvia_gateway_venv`) and activate them from there.
+
 ```bash
 cd capvia_platform
 
 # Create isolated Python 3.12 virtual environment
+# Standard (if on internal HFS+/APFS drive):
 python3.12 -m venv venv
+# If on exFAT volume:
+# python3.12 -m venv ~/capvia_gateway_venv
 
 # Activate the environment
+# Standard:
 source venv/bin/activate
+# If on exFAT volume:
+# source ~/capvia_gateway_venv/bin/activate
 
 # Verify you are in the correct environment
 which python
-# Expected: /path/to/CAPVIA/capvia_platform/venv/bin/python
+# Expected: /path/to/your/venv/bin/python
 
 python --version
 # Expected: Python 3.12.x
@@ -357,8 +368,8 @@ asyncio.run(seed())
 ## Step 17: Start CAPVIA Gateway
 
 ```bash
-# From capvia_platform/ with venv active
-uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
+# From the CAPVIA root directory with the gateway venv active:
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Expected output:
@@ -377,15 +388,21 @@ INFO:     Application startup complete.
 ```bash
 # New terminal
 cd CAPVIA/ats_resume/backend
-python3.12 -m venv venv
-source venv/bin/activate
+
+# Create virtual environment (use internal drive if on exFAT)
+# Standard:
+python3.12 -m venv venv && source venv/bin/activate
+# If on exFAT volume:
+# python3.12 -m venv ~/capvia_ats_venv && source ~/capvia_ats_venv/bin/activate
+
 pip install -r requirements.txt
 
 # Set up ATS environment
 cp .env.example .env
 # Edit .env to match your database/redis/mongodb settings
 
-uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+# Run ATS backend with ai_engine in PYTHONPATH
+PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 ---
@@ -395,16 +412,23 @@ uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 ```bash
 # New terminal
 cd CAPVIA/ai_simulation/backend
-python3.12 -m venv venv
-source venv/bin/activate
+
+# Create virtual environment (use internal drive if on exFAT)
+# Standard:
+python3.12 -m venv venv && source venv/bin/activate
+# If on exFAT volume:
+# python3.12 -m venv ~/capvia_simulation_venv && source ~/capvia_simulation_venv/bin/activate
+
 pip install -r requirements.txt
 
 # Set up Simulation environment
 cp .env.example .env
 
-# Run Django server
-python manage.py migrate
-python manage.py runserver 127.0.0.1:8002
+# Run database migrations using Alembic
+alembic upgrade head
+
+# Start Simulation FastAPI server on port 8002
+uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
 ```
 
 ---
@@ -414,8 +438,13 @@ python manage.py runserver 127.0.0.1:8002
 ```bash
 # New terminal — Interview Evaluation Server
 cd CAPVIA/ai_interview
-python3.12 -m venv venv
-source venv/bin/activate
+
+# Create virtual environment (use internal drive if on exFAT)
+# Standard:
+python3.12 -m venv venv && source venv/bin/activate
+# If on exFAT volume:
+# python3.12 -m venv ~/capvia_interview_venv && source ~/capvia_interview_venv/bin/activate
+
 pip install -r requirements_ai.txt
 
 python evaluation_server.py
@@ -508,7 +537,8 @@ Expected:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `ModuleNotFoundError: capvia_platform` | Wrong working directory | Run from `CAPVIA/capvia_platform/` |
+| `ModuleNotFoundError: capvia_platform` | Missing PYTHONPATH | Set `PYTHONPATH="."` and run uvicorn from CAPVIA root directory |
+| `ModuleNotFoundError` or `WARNING: Ignoring invalid distribution` | exFAT filesystem corruption | Create the virtual environment (`venv`) on your internal Mac SSD drive (e.g. `~/`) rather than on the external USB/exFAT drive |
 | `asyncpg.exceptions.TooManyConnectionsError` | Neon free tier limit | Use pooled connection string |
 | `redis.exceptions.ConnectionError` | Redis URL wrong | Verify `REDIS_URL` includes `rediss://` (TLS) |
 | `alembic.util.exc.CommandError: Can't locate revision` | DB out of sync | Run `alembic stamp head` then `alembic upgrade head` |

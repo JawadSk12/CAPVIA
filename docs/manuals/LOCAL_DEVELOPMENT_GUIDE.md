@@ -8,25 +8,34 @@
 
 | Service | Directory | Command | Port |
 |---------|-----------|---------|------|
-| CAPVIA Gateway | `capvia_platform/` | `uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload` | 8000 |
-| ATS Engine | `ats_resume/backend/` | `uvicorn main:app --host 127.0.0.1 --port 8001 --reload` | 8001 |
-| Simulation | `ai_simulation/backend/` | `python manage.py runserver 127.0.0.1:8002` | 8002 |
+| CAPVIA Gateway | `/path/to/CAPVIA` | `PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload` | 8000 |
+| ATS Engine | `ats_resume/backend/` | `PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload` | 8001 |
+| Simulation | `ai_simulation/backend/` | `uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload` | 8002 |
 | Interview Eval | `ai_interview/` | `python evaluation_server.py` | 8765 |
 | Frontend | `capvia_platform/frontend/` | `npm run dev` | 3000 |
+
+---
+
+> [!IMPORTANT]
+> **exFAT Filesystem Warning:** If your project resides on an exFAT formatted drive, standard virtual environments (`venv`) inside the project will fail due to exFAT filesystem limitations. Instead, create your Python virtual environments on the internal Mac SSD drive (e.g. `~/capvia_gateway_venv`, `~/capvia_ats_venv`, `~/capvia_simulation_venv`, `~/capvia_interview_venv`) and activate them from there.
 
 ---
 
 ## 1. Running the CAPVIA Gateway
 
 ```bash
-cd /path/to/CAPVIA/capvia_platform
-source venv/bin/activate
+# Navigate to CAPVIA root
+cd /path/to/CAPVIA
 
-# Development (with hot-reload)
-uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
+# Activate virtual environment
+source venv/bin/activate  # Standard
+# source ~/capvia_gateway_venv/bin/activate  # If on exFAT volume
+
+# Development (with hot-reload and PYTHONPATH set)
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
 
 # Production-like (no reload, multiple workers)
-uvicorn capvia_platform.main:app --host 0.0.0.0 --port 8000 --workers 4
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 **API Explorer:** http://localhost:8000/docs  
@@ -38,9 +47,12 @@ uvicorn capvia_platform.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ```bash
 cd /path/to/CAPVIA/ats_resume/backend
-source venv/bin/activate
 
-uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+source venv/bin/activate  # Standard
+# source ~/capvia_ats_venv/bin/activate  # If on exFAT volume
+
+# Run with ai_engine in PYTHONPATH
+PYTHONPATH=".:../ai_engine" uvicorn main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 The ATS engine requires:
@@ -54,13 +66,15 @@ The ATS engine requires:
 
 ```bash
 cd /path/to/CAPVIA/ai_simulation/backend
-source venv/bin/activate
 
-# Apply any pending migrations
-python manage.py migrate
+source venv/bin/activate  # Standard
+# source ~/capvia_simulation_venv/bin/activate  # If on exFAT volume
 
-# Start Django dev server
-python manage.py runserver 127.0.0.1:8002
+# Apply any pending migrations using Alembic
+alembic upgrade head
+
+# Start FastAPI dev server
+uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
 ```
 
 ---
@@ -71,7 +85,9 @@ python manage.py runserver 127.0.0.1:8002
 
 ```bash
 cd /path/to/CAPVIA/ai_interview
-source venv/bin/activate
+
+source venv/bin/activate  # Standard
+# source ~/capvia_interview_venv/bin/activate  # If on exFAT volume
 
 python evaluation_server.py
 # Output: "Starting AI Interview Evaluation Server on http://localhost:8765"

@@ -112,7 +112,7 @@ Candidate Applies
 - 14 scoring dimensions including `technical_alignment`, `readability`, `hiring_readiness_score`
 
 #### Simulation Engine (`ai_simulation/`)
-- Django REST service running on **port 8000** (simulation-specific)
+- Python FastAPI service running on **port 8002** (simulation-specific)
 - Provides proctored coding rounds with multi-round scoring
 - Tracks copy-paste behavior, tab switches, and AI tool usage
 - Outputs: `total_score`, `cheating_risk_level`, `ai_dependency_score`, `round_scores`
@@ -193,7 +193,7 @@ Candidate Applies
           │                           │                          │
    ┌──────▼──────┐          ┌─────────▼────────┐      ┌─────────▼────────┐
    │  ATS Engine  │          │Simulation Engine │      │Interview Engine   │
-   │ FastAPI :8001│          │  Django   :8000  │      │ Electron + React  │
+   │ FastAPI :8001│          │ FastAPI   :8002  │      │ Electron + React  │
    │ MongoDB      │          │ PostgreSQL        │      │ FastAPI eval :8765│
    │ ats_resume/  │          │ ai_simulation/    │      │ ai_interview/     │
    └──────┬───────┘          └────────┬─────────┘      └────────┬──────────┘
@@ -260,8 +260,8 @@ ATS Engine ──POST /api/v1/gateway/webhooks──► CAPVIA Gateway
 |---------|------|-----------|
 | CAPVIA Gateway | 8000 | FastAPI (Python 3.12) |
 | ATS Engine | 8001 | FastAPI (Python 3.12) |
-| Simulation Engine | 8002 | Django (Python) |
-| Interview Eval Server | 8765 | FastAPI (Python) |
+| Simulation Engine | 8002 | FastAPI (Python 3.12) |
+| Interview Eval Server | 8765 | FastAPI (Python 3.12) |
 | Frontend | 3000 | Next.js 14 |
 
 ---
@@ -468,6 +468,9 @@ CAPVIA/
 - Node.js 20+
 - Git
 
+> [!IMPORTANT]
+> **exFAT Filesystem Warning:** If this repository resides on an exFAT formatted partition, creating virtual environments (`venv`) directly inside the project directories will cause package installation/runtime errors due to exFAT symlink/permission limitations. Create them on your internal Mac SSD drive (e.g. `~/capvia_gateway_venv`) and activate them from there.
+
 ### Clone & Setup
 
 ```bash
@@ -475,10 +478,13 @@ CAPVIA/
 git clone https://github.com/JawadSk12/CAPVIA.git
 cd CAPVIA
 
-# 2. Set up CAPVIA Gateway
+# 2. Set up CAPVIA Gateway virtualenv
 cd capvia_platform
-python3.12 -m venv venv
-source venv/bin/activate
+# Standard (if on internal SSD):
+python3.12 -m venv venv && source venv/bin/activate
+# If on exFAT volume:
+# python3.12 -m venv ~/capvia_gateway_venv && source ~/capvia_gateway_venv/bin/activate
+
 pip install -r requirements.txt
 
 # 3. Copy and configure environment
@@ -488,13 +494,14 @@ cp .env.development .env
 # 4. Run database migrations
 python -m alembic upgrade head
 
-# 5. Start the gateway
-uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
+# 5. Start the gateway (from CAPVIA root)
+cd ..
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ```bash
 # 6. Set up and start the frontend (separate terminal)
-cd capvia_platform/frontend
+cd CAPVIA/capvia_platform/frontend
 npm install --no-bin-links
 cp .env.example .env.local
 # Fill in .env.local values
@@ -522,13 +529,15 @@ curl http://localhost:8000/api/health
 git pull origin main
 
 # Activate environment
-cd capvia_platform && source venv/bin/activate
+source venv/bin/activate  # Standard
+# source ~/capvia_gateway_venv/bin/activate  # If on exFAT volume
 
-# Start services
-uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload &
-cd frontend && npm run dev &
+# Start services (from CAPVIA root)
+PYTHONPATH="." uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload &
+cd capvia_platform/frontend && npm run dev &
 
-# Run tests before committing
+# Run tests (from capvia_platform/) before committing
+cd ../capvia_platform
 pytest tests/ -v
 
 # Commit with semantic versioning

@@ -27,4 +27,7 @@ mongodb_data/
 
 # OS Files
 .DS_Store
+**/.DS_Store
+._*
+**/._*
 Thumbs.db
