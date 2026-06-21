@@ -1,167 +1,432 @@
-# System Architecture
+# CAPVIA — System Architecture
 
-This document outlines the core architecture, component interactions, sequence diagrams, and lifecycle transitions of the CAPVIA recruitment platform.
+> **Audience:** Technical evaluator, architect, or senior developer reviewing the system design.
 
 ---
 
-## 1. System Topology
+## Overview
 
-CAPVIA is structured as an API Gateway and recruitment control center, coordinating asynchronous evaluations across three external specialized microservice subsystems (ATS, Simulation, and Interview).
+CAPVIA is a **microservices-based** recruitment intelligence platform composed of:
 
-```mermaid
-graph TB
-    subgraph Client Tier
-        Candidate[Candidate Web App]
-        Recruiter[Recruiter HR Dashboard]
-    end
+- **1 Central Gateway** (CAPVIA Platform) — FastAPI, PostgreSQL, Redis
+- **3 Specialized AI Engines** — ATS, Simulation, Interview (independently deployed)
+- **4 Automated Intelligence Engines** — Integrity, DNA, Ranking, Report (embedded in gateway)
+- **1 React/Next.js Frontend** — HR and Candidate dashboards
+- **3 Cloud Services** — Neon (DB), Upstash (Cache), Supabase (Storage)
 
-    subgraph Gateway & Application Tier [CAPVIA Core]
-        API[FastAPI Gateway Router]
-        Auth[Auth & JWT Session Manager]
-        Tasks[Background Task Workers]
-        PDF[Report Engine / ReportLab]
-    end
+---
 
-    subgraph Data Store Tier
-        DB[(PostgreSQL Database)]
-        Cache[(Redis Cache / Session Store)]
-        Storage[(Local PDF Dossier Storage)]
-    end
+## High-Level Architecture
 
-    subgraph Subsystem Tier
-        ATS[ATS Resume Screening Engine]
-        Sim[AssessAI Coding Simulation]
-        Int[IntelliRecruit Video Interview]
-    end
-
-    %% Client Interactions
-    Candidate -->|Submit Application / Track Stepper| API
-    Recruiter -->|Manage Listings / Download Dossier| API
-
-    %% Core Internals
-    API --> Auth
-    API --> DB
-    API --> Cache
-    API --> Tasks
-    Tasks --> PDF
-    PDF --> Storage
-
-    %% Webhook & API Integrations
-    API -->|API Triggers| ATS
-    API -->|API Triggers| Sim
-    API -->|API Triggers| Int
-
-    ATS -->|Webhook Callbacks| API
-    Sim -->|Webhook Callbacks| API
-    Int -->|Webhook Callbacks| API
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              INTERNET                                        │
+└──────────────┬──────────────────────────────────────────────────────────────┘
+               │
+    ┌──────────▼────────────────────────────┐
+    │           Vercel CDN/Edge              │
+    │       capvia.io  (Next.js 14)          │
+    │  HR Dashboard | Candidate Dashboard    │
+    └──────────┬────────────────────────────┘
+               │ HTTPS API calls
+               │ Authorization: Bearer <JWT>
+    ┌──────────▼────────────────────────────┐
+    │        CAPVIA Gateway                  │
+    │    api.capvia.io  (FastAPI)            │
+    │    Railway — port 8000                 │
+    │                                        │
+    │  ┌─────────────────────────────────┐  │
+    │  │          Routers (13)           │  │
+    │  │ auth | companies | internships  │  │
+    │  │ applications | ats | simulation │  │
+    │  │ interview | integrity | dna     │  │
+    │  │ rankings | reports | webhooks   │  │
+    │  └─────────────────────────────────┘  │
+    │  ┌──────────────┐ ┌────────────────┐  │
+    │  │ IntegrityEng │ │   DNA Engine   │  │
+    │  │  (Phase 13)  │ │  (Phase 14)    │  │
+    │  └──────┬───────┘ └───────┬────────┘  │
+    │         │ auto-triggers   │ auto-trig. │
+    │  ┌──────▼───────────────────────────┐ │
+    │  │          Ranking Engine           │ │
+    │  │           (Phase 15)              │ │
+    │  └───────────────────────────────────┘ │
+    └──────────┬────────────────────────────┘
+               │ asyncpg                     │ redis.asyncio
+    ┌──────────▼──────────┐      ┌───────────▼─────────┐
+    │   Neon PostgreSQL    │      │   Upstash Redis      │
+    │  (17 tables)         │      │  email tokens        │
+    │  connection pooled   │      │  integrity weights   │
+    └─────────────────────┘      └─────────────────────┘
+               │
+    WEBHOOKS (X-CAPVIA-Signature HMAC-SHA256)
+               │
+    ┌──────────┼───────────────────────────────────────┐
+    │          │                                        │
+    ▼          ▼                                        ▼
+┌─────────────────┐  ┌─────────────────┐   ┌─────────────────────┐
+│   ATS Engine    │  │Simulation Engine│   │  Interview Engine    │
+│  ats.capvia.io  │  │ sim.capvia.io   │   │ eval.capvia.io       │
+│  FastAPI :8001  │  │  Django :8002   │   │  FastAPI :8765       │
+│  MongoDB        │  │  PostgreSQL     │   │  (+ Electron client) │
+│  SBERT + KW     │  │  Proctored IDE  │   │  SentenceTransformers│
+└─────────────────┘  └─────────────────┘   └─────────────────────┘
 ```
 
 ---
 
-## 2. Platform Sequence Diagram
+## Complete Request Flow
 
-The following diagram illustrates the candidate registration, application submission, screening webhooks, and downstream engines processing lifecycle:
+### Candidate Registration → Login
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Candidate
-    actor Recruiter
-    participant Gateway as CAPVIA Core API
-    participant DB as PostgreSQL DB
-    participant ATS as ATS Subsystem
-    participant Sim as AssessAI Subsystem
-    participant Int as IntelliRecruit Subsystem
+```
+Candidate                  Frontend              CAPVIA Gateway          Redis         PostgreSQL
+    │                          │                        │                   │               │
+    │──POST /auth/register────►│                        │                   │               │
+    │                          │──POST /auth/register──►│                   │               │
+    │                          │                        │──check email──────┼──────────────►│
+    │                          │                        │◄──user exists?────┼───────────────│
+    │                          │                        │──hash password     │               │
+    │                          │                        │──INSERT User──────┼──────────────►│
+    │                          │                        │──SET email_verify token (24h)─────►
+    │                          │                        │──log activity─────┼──────────────►│
+    │                          │◄──200 + simulated_token│                   │               │
+    │◄──200 (token in resp)────│                        │                   │               │
+    │                          │                        │                   │               │
+    │──POST /auth/verify-email►│                        │                   │               │
+    │                          │──POST /auth/verify────►│                   │               │
+    │                          │                        │──GET email_verify:token───────────►
+    │                          │                        │◄──email string────────────────────│
+    │                          │                        │──UPDATE users SET is_active=true──►│
+    │                          │                        │──DEL email_verify:token───────────►
+    │                          │◄──200 Account active───│                   │               │
+    │──POST /auth/login────────►│                       │                   │               │
+    │                          │──POST /auth/login─────►│                   │               │
+    │                          │                        │──SELECT User──────┼──────────────►│
+    │                          │                        │──verify_password() │               │
+    │                          │                        │──create JWT pair  │               │
+    │                          │                        │──INSERT UserSession────────────────►│
+    │                          │                        │──INSERT ActivityLog────────────────►│
+    │                          │◄──{access_token, refresh_token, role}──────│               │
+    │◄──tokens stored───────── │                        │                   │               │
+```
 
-    %% 1. Application Submission
-    Candidate->>Gateway: POST /api/v1/applications (Resume & Cover Letter)
-    Gateway->>DB: INSERT application (Status: APPLIED)
-    Gateway->>Gateway: Trigger ATS Screening
-    Gateway->>ATS: POST /api/v1/screening/ats (Submit Document)
-    Gateway-->>Candidate: Return 201 Created (Status: ATS_PENDING)
+### Application → Full Evaluation Pipeline
 
-    %% 2. ATS Webhook Callback
-    ATS->>Gateway: POST /api/v1/gateway/webhooks/ats (Score & Analysis)
-    Note over Gateway: Verify Webhook HMAC Signature
-    Gateway->>DB: INSERT ats_results (Overall Score: 85.0)
-    Gateway->>DB: UPDATE application status to ATS_COMPLETED
-    Gateway->>Gateway: Evaluate Progression (ATS Score >= 60%)
-    Gateway->>DB: UPDATE application status to SIMULATION_INVITED
-    Gateway->>Sim: POST /api/v1/simulation/invite (Create Challenge Token)
-
-    %% 3. Simulation Webhook Callback
-    Sim->>Gateway: POST /api/v1/gateway/webhooks/simulation (Coding Attempt Completed)
-    Note over Gateway: Verify Webhook HMAC Signature
-    Gateway->>DB: INSERT simulation_results (Score: 88.5, Cheating: LOW)
-    Gateway->>DB: UPDATE application status to SIMULATION_COMPLETED
-    Gateway->>Gateway: Evaluate Progression (Simulation >= 70%)
-    Gateway->>DB: UPDATE application status to INTERVIEW_INVITED
-    Gateway->>Int: POST /api/v1/interview/invite (Register Video Session)
-
-    %% 4. Interview Webhook Callback
-    Int->>Gateway: POST /api/v1/gateway/webhooks/interview (Session Completed)
-    Note over Gateway: Verify Webhook HMAC Signature
-    Gateway->>DB: INSERT interview_results (Score: 82.0, Proctoring details)
-    Gateway->>DB: UPDATE application status to EVALUATED
-
-    %% 5. Downstream Evaluation Chain
-    rect rgb(200, 220, 240)
-        Note over Gateway, DB: Synchronous Downstream Engines Execution
-        Gateway->>Gateway: Execute Integrity Engine (Trust Index Calculation)
-        Gateway->>DB: INSERT integrity_results (Trust Index: 91)
-        Gateway->>Gateway: Execute DNA Profile Engine (9 Dimensions Alignment)
-        Gateway->>DB: INSERT dna_profiles (Radar dataset)
-        Gateway->>Gateway: Execute Ranking Engine (Calculate Weighted final_score)
-        Gateway->>DB: INSERT rankings (Composite: 85.95, Rank: 1)
-    end
-
-    %% 6. Report Generation
-    Recruiter->>Gateway: POST /api/v1/reports/{app_id}/generate
-    Gateway->>DB: Check HR RBAC Role
-    Gateway->>Gateway: Generate PDF report dossier (ReportLab)
-    Gateway->>DB: INSERT reports (Metadata & PDF URL)
-    Gateway-->>Recruiter: Return 201 Created (Report ready)
+```
+Candidate        Frontend           Gateway           ATS Engine        Simulation        Interview
+    │               │                  │                  │                  │               │
+    │──apply()─────►│──POST /applications►               │                  │               │
+    │               │                  │──INSERT Application                 │               │
+    │               │                  │──INSERT AppEvent (APPLIED)          │               │
+    │               │                  │──notify candidate                   │               │
+    │               │◄──{application_id}│                 │                  │               │
+    │               │                  │                  │                  │               │
+    │               │                  │◄─POST /gateway/webhooks──────────── │               │
+    │               │                  │  event=ATS_PROCESSED                │               │
+    │               │                  │  (HMAC verified)                    │               │
+    │               │                  │──INSERT ATSResult                   │               │
+    │               │                  │──UPDATE application status=ATS_COMPLETED            │
+    │               │                  │──INSERT AppEvent (ATS_PENDING→ATS_COMPLETED)        │
+    │               │                  │──notify candidate                   │               │
+    │               │                  │                  │                  │               │
+    │               │                  │◄─POST /gateway/webhooks─────────────────────────── │
+    │               │                  │  event=SIMULATION_SUBMITTED                        │
+    │               │                  │──INSERT SimulationResult                           │
+    │               │                  │──UPDATE status=SIMULATION_COMPLETED                │
+    │               │                  │                  │                  │               │
+    │               │                  │◄─POST /gateway/webhooks─────────────────────────────►│
+    │               │                  │  event=INTERVIEW_EVALUATED                          │
+    │               │                  │──INSERT InterviewResult                             │
+    │               │                  │──INSERT IntegrityResult (raw proctoring metrics)    │
+    │               │                  │──UPDATE status=INTERVIEW_COMPLETED                  │
+    │               │                  │                  │                  │               │
+    │               │                  │──[AUTO] IntegrityService.calculate()                │
+    │               │                  │  penalty = ATS + Sim + Interview violations         │
+    │               │                  │  trust_index = weighted formula                     │
+    │               │                  │──[AUTO] DNAService.generate_dna_profile()           │
+    │               │                  │  9 capability dimensions computed                   │
+    │               │                  │  radar_chart_data built                            │
+    │               │                  │──[AUTO] RankingService.compute_ranking()            │
+    │               │                  │  final_score = ATS×0.25+Sim×0.30+IV×0.25+Int×0.20 │
+    │               │                  │  internship_rank, company_rank, percentile          │
+    │               │                  │──UPDATE status=EVALUATED                            │
 ```
 
 ---
 
-## 3. Downstream Calculations Chain
+## Application Lifecycle State Machine
 
-When the `INTERVIEW_COMPLETED` webhook fires and results are committed, the **Downstream Engines Chain** executes to evaluate capabilities, compliance, and standings:
+```
+                APPLIED
+                   │
+                   ▼
+              ATS_PENDING
+                   │  (ATS_PROCESSED webhook)
+                   ▼
+             ATS_COMPLETED
+                   │
+                   ▼
+          SIMULATION_INVITED
+                   │
+                   ▼
+       SIMULATION_IN_PROGRESS
+                   │  (SIMULATION_SUBMITTED webhook)
+                   ▼
+        SIMULATION_COMPLETED
+                   │
+                   ▼
+          INTERVIEW_INVITED
+                   │
+                   ▼
+       INTERVIEW_IN_PROGRESS
+                   │  (INTERVIEW_EVALUATED webhook)
+                   ▼
+        INTERVIEW_COMPLETED
+                   │  (Integrity + DNA + Ranking auto-triggered)
+                   ▼
+              EVALUATED ─────────────────────┐
+                   │                          │
+              (HR action)              EVALUATED_LOCAL_BASELINE
+                   │
+          ┌────────┴────────┐
+          ▼                 ▼
+      SHORTLISTED        REJECTED
+          │
+          ▼
+        HIRED
 
-```mermaid
-graph TD
-    subgraph Input Datasets
-        ATS_Data[ATS Resume Score & Skills]
-        Sim_Data[AssessAI Correctness & Copy-Paste]
-        Int_Data[IntelliRecruit Speech & Proctoring]
-    end
-
-    subgraph Downstream Engine Processes
-        IE[Integrity Engine] -->|1. Calculate Trust Index| DE[DNA Engine]
-        DE -->|2. Maps 9 Capability Vectors| RE[Ranking Engine]
-        RE -->|3. Evaluate weighted final_score & percentile| FE[HR Leaderboard]
-    end
-
-    ATS_Data --> IE
-    Sim_Data --> IE
-    Int_Data --> IE
-
-    ATS_Data --> DE
-    Sim_Data --> DE
-    Int_Data --> DE
-
-    IE --> RE
+At any stage:
+    WITHDRAWN  ←── candidate initiates
+    REJECTED   ←── HR initiates
 ```
 
-### Downstream Calculations Formulae
-1. **Integrity Engine**:
-   - Calculates the **Trust Index** ($TI \in [0, 100]$):
-     $$TI = 100 - (TabSwitches \times 5) - (LookAwayCount \times 2) - (CopyPasteEvents \times 10)$$
-     *(Proctoring indicators are calibrated dynamically against baseline metrics).*
-2. **DNA Profile Engine**:
-   - Compiles a 9-dimensional capability score ($0-100$) based on semantic alignment, coding proficiency, speech parameters, and integrity metrics.
-3. **Ranking Engine**:
-   - Evaluates the **Final Score** ($FS \in [0, 100]$):
-     $$FS = (ATS \times 0.25) + (Simulation \times 0.30) + (Interview \times 0.25) + (TrustIndex \times 0.20)$$
-   - Computes dynamic percentiles and assigns recommendation tiers (Platinum, Gold, Silver, Bronze).
+---
+
+## Integrity Engine Data Flow
+
+```
+Input Sources:
+  ATS:         overall_score, is_suspicious, fraud_probability
+  Simulation:  cheating_risk_level, ai_dependency_score
+  Interview:   cheating_probability_pct
+  Proctoring:  phone_detections_count, multi_face_events, tab_switches,
+               copy_pastes, look_away_count, face_absences_count,
+               suspicious_keys
+
+Penalty Calculation:
+  ┌──────────────────────────────────────────────────────┐
+  │  ATS Penalty                                          │
+  │    is_suspicious → +15                               │
+  │    fraud_prob > 70% → +20                            │
+  │    fraud_prob > 40% → +10                            │
+  ├──────────────────────────────────────────────────────┤
+  │  Simulation Penalty                                   │
+  │    cheating_risk=CRITICAL → +30                      │
+  │    cheating_risk=HIGH → +20                          │
+  │    ai_dependency ≥ 75% → +20                         │
+  │    ai_dependency ≥ 50% → +10                         │
+  ├──────────────────────────────────────────────────────┤
+  │  Interview Penalty                                    │
+  │    phone_detected(n) → +(25 + (n-1)×10) [CRITICAL]  │
+  │    multi_face(n) → +n×10 [CRITICAL]                  │
+  │    face_absent(n>1) → +(n-1)×7                       │
+  │    look_away(n>3) → +(n-3)×4                         │
+  │    tab_switches(n) → +n×5                            │
+  │    copy_paste(n) → +n×10                             │
+  │    suspicious_keys(n) → +n×5                         │
+  │    cheat_prob>70% → +15                              │
+  └──────────────────────────────────────────────────────┘
+
+  integrity_score = max(0, 100 - total_penalty)
+
+  trust_index = (integrity_score × 0.45)
+              + ((1 - ai_dependency) × 100 × 0.30)
+              + (ats_score_normalized × 100 × 0.25)
+
+Output:
+  integrity_score, ai_dependency_score, trust_index,
+  compiled_risk_level, confidence_level,
+  explainability, scoring_formula, calibration_logic,
+  audit_trail[], historical_tracking[]
+```
+
+---
+
+## DNA Engine Data Flow
+
+```
+Input Sources: ATS, Simulation, Interview, Integrity results
+
+9 Capability Dimensions (all 0–100):
+
+  ┌─────────────────┬────────────────────────────────────────────────────────┐
+  │ Dimension       │ Formula                                                 │
+  ├─────────────────┼────────────────────────────────────────────────────────┤
+  │ Problem Solving │ sim.total_score×0.60 + iv.answer_score_pct×0.40        │
+  │ Execution       │ sim.total_score×0.50 + practical_exp×0.30 + ready×0.20 │
+  │ Communication   │ iv.answer_score_pct×0.50 + readability×0.25+clarity×0.25│
+  │ Learning Ability│ (matched/total)×100×0.60 + technical_depth×0.40        │
+  │ Adaptability    │ improvements×0.40 + round_variance×0.40 + strengths×0.20│
+  │ Consistency     │ trust_index×0.70 + (100-violations×15)×0.30            │
+  │ Confidence      │ risk_inverse×0.50 + (100-cheat_prob)×0.30 + face_vis×0.20│
+  │ Role Fit        │ ats_overall×0.40 + domain_align×0.30 + tech_align×0.30  │
+  │ Leadership Pot. │ exp_align×0.35 + iv_recommendation×0.35 + readiness×0.30│
+  └─────────────────┴────────────────────────────────────────────────────────┘
+
+Output:
+  - 9 integer dimensions (0–100)
+  - radar_chart_data (Chart.js compatible JSON)
+  - capability_vectors (unit-normalized + category labels)
+  - comparative_analysis (cohort percentile ranks)
+  - historical_trends (time-series snapshots)
+```
+
+---
+
+## Ranking Engine Data Flow
+
+```
+Input:
+  ats_raw      = ATSResult.overall_score          (0–100)
+  sim_raw      = SimulationResult.total_score     (0–100)
+  iv_raw       = answer_score×0.80 + integrity×0.20 (0–100)
+  integ_raw    = IntegrityResult.trust_index      (0–100)
+
+Formula:
+  If all 4 phases present:
+    final_score = ats×0.25 + sim×0.30 + iv×0.25 + integ×0.20
+
+  If phases missing:
+    Weights are renormalised for present phases:
+    total_weight = sum of weights for present phases
+    each_contribution = raw_score × weight / total_weight
+    final_score = sum(contributions)
+
+Tier Classification:
+  ≥85 → PLATINUM
+  ≥70 → GOLD
+  ≥55 → SILVER
+  ≥40 → BRONZE
+  <40  → UNRANKED
+
+Rankings:
+  internship_rank  = ordinal rank within internship cohort (1 = best)
+  company_rank     = ordinal rank across all company internships
+  global_percentile = fraction of cohort scoring below × 100
+  is_top_candidate = global_percentile ≥ 90 AND cohort_size ≥ 3
+
+Output:
+  final_score, ats/sim/iv/integ_component, ats/sim/iv/integ_raw_score,
+  internship_rank, company_rank, global_percentile, is_top_candidate,
+  recommendation_tier, data_completeness, explainability,
+  score_breakdown, ranking_analytics, audit_trail
+```
+
+---
+
+## Database Schema Overview
+
+```
+users (1) ─────────────────────────────────────────────────────────┐
+  │                                                                  │
+  ├──► companies (via created_by FK)                                │
+  │      └──► company_members (user_id, company_id)                 │
+  │      └──► internships (company_id)                              │
+  │             └──► applications (vacancy_id)                      │
+  │                    ├──► application_events                      │
+  │                    ├──► application_mappings                    │
+  │                    ├──► ats_results                             │
+  │                    ├──► simulation_results                      │
+  │                    ├──► interview_results                       │
+  │                    ├──► integrity_results                       │
+  │                    ├──► dna_profiles                            │
+  │                    ├──► rankings ──────────► internships        │
+  │                    └──► reports                                 │
+  │                                                                  │
+  ├──► candidate_mappings (ats/simulation/interview external IDs)   │
+  ├──► activity_logs                                                 │
+  ├──► notifications                                                 │
+  └──► user_sessions (refresh token tracking)                        │
+                                                                     │
+  vacancy_mappings (maps internship_id → ats_jd/simulation IDs)  ◄──┘
+```
+
+---
+
+## Security Architecture
+
+```
+                   ┌─────────────────────────────────────────┐
+                   │           Authentication Layer           │
+                   │                                          │
+                   │  Registration → bcrypt hash (cost=12)    │
+                   │  Login → verify_password (passlib)       │
+                   │                                          │
+                   │  Access Token: JWT HS256, 30min TTL      │
+                   │  Payload: {sub, email, role, type, exp}  │
+                   │                                          │
+                   │  Refresh Token: JWT HS256, 7-day TTL     │
+                   │  Stored as: bcrypt hash in user_sessions │
+                   │                                          │
+                   │  Refresh Token Rotation (RTR):           │
+                   │  - Old token invalidated on use          │
+                   │  - Reuse detected → ALL sessions revoked │
+                   └─────────────────────────────────────────┘
+                                       │
+                   ┌─────────────────────────────────────────┐
+                   │           Authorization Layer            │
+                   │                                          │
+                   │  get_current_user: validates JWT         │
+                   │  RoleChecker(["hr", "admin"]): RBAC     │
+                   │  Soft-delete filter: deleted_at IS NULL  │
+                   │  Owner check: candidate sees own records │
+                   └─────────────────────────────────────────┘
+                                       │
+                   ┌─────────────────────────────────────────┐
+                   │           Webhook Security               │
+                   │                                          │
+                   │  HMAC-SHA256 signature verification      │
+                   │  Format: t={timestamp},v1={hash}         │
+                   │  signed_payload = f"{ts}.{body_bytes}"   │
+                   │  hash = hmac(secret, signed_payload)     │
+                   │  Constant-time comparison (hmac.compare) │
+                   └─────────────────────────────────────────┘
+```
+
+---
+
+## Deployment Architecture
+
+```
+GitHub (JawadSk12/CAPVIA)
+    │
+    ├── Push to main ─────────────────────────────────────────────┐
+    │                                                              │
+    │   GitHub Actions                                             │
+    │   ├── Run pytest (capvia_platform/tests/)                   │
+    │   ├── Deploy gateway → Railway                               │
+    │   └── Deploy frontend → Vercel                               │
+    │                                                              │
+Vercel                                     Railway                │
+    │                                          │                  │
+capvia.io → Edge network               api.capvia.io              │
+    Next.js SSR                        CAPVIA Gateway             │
+    TanStack Query                     Python 3.12                │
+    Zustand state                      FastAPI                    │
+    @sentry/nextjs                     asyncpg                    │
+    Tailwind CSS                       Redis client               │
+                                           │                      │
+                                       ┌───┴──────┐               │
+                                       │  Neon    │               │
+                                       │ Postgres │               │
+                                       └──────────┘               │
+                                       ┌───┴──────┐               │
+                                       │ Upstash  │               │
+                                       │  Redis   │               │
+                                       └──────────┘               │
+                                       ┌───┴──────┐               │
+                                       │ Supabase │               │
+                                       │ Storage  │               │
+                                       └──────────┘               │
+```

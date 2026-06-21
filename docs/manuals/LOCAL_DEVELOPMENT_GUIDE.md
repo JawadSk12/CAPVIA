@@ -1,167 +1,531 @@
-# Local Development Guide
+# CAPVIA — Local Development Guide
 
-This guide details the daily developer workflows, debugging utilities, migration steps, and logging structures.
+> **Audience:** Developer with the platform already set up (see FULL_SETUP_GUIDE.md). This is your daily reference.
 
 ---
 
-## 1. Daily Startup Routine
+## Quick Service Start Reference
 
-To start the entire CAPVIA ecosystem for daily development, execute the following commands in separate terminal sessions:
+| Service | Directory | Command | Port |
+|---------|-----------|---------|------|
+| CAPVIA Gateway | `capvia_platform/` | `uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload` | 8000 |
+| ATS Engine | `ats_resume/backend/` | `uvicorn main:app --host 127.0.0.1 --port 8001 --reload` | 8001 |
+| Simulation | `ai_simulation/backend/` | `python manage.py runserver 127.0.0.1:8002` | 8002 |
+| Interview Eval | `ai_interview/` | `python evaluation_server.py` | 8765 |
+| Frontend | `capvia_platform/frontend/` | `npm run dev` | 3000 |
 
-### Service 1: Local Cache (Redis)
-Ensure Redis is running locally on the standard port `6379`:
+---
+
+## 1. Running the CAPVIA Gateway
+
 ```bash
+cd /path/to/CAPVIA/capvia_platform
+source venv/bin/activate
+
+# Development (with hot-reload)
+uvicorn capvia_platform.main:app --host 127.0.0.1 --port 8000 --reload
+
+# Production-like (no reload, multiple workers)
+uvicorn capvia_platform.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+**API Explorer:** http://localhost:8000/docs  
+**ReDoc:** http://localhost:8000/redoc
+
+---
+
+## 2. Running the ATS Engine
+
+```bash
+cd /path/to/CAPVIA/ats_resume/backend
+source venv/bin/activate
+
+uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+```
+
+The ATS engine requires:
+- MongoDB running (or MongoDB Atlas connection string in `.env`)
+- Redis connection (for job queuing)
+- SBERT model files downloaded (first run downloads automatically)
+
+---
+
+## 3. Running the Simulation Engine
+
+```bash
+cd /path/to/CAPVIA/ai_simulation/backend
+source venv/bin/activate
+
+# Apply any pending migrations
+python manage.py migrate
+
+# Start Django dev server
+python manage.py runserver 127.0.0.1:8002
+```
+
+---
+
+## 4. Running the Interview Engine
+
+### Evaluation Server (required)
+
+```bash
+cd /path/to/CAPVIA/ai_interview
+source venv/bin/activate
+
+python evaluation_server.py
+# Output: "Starting AI Interview Evaluation Server on http://localhost:8765"
+```
+
+### Electron Desktop App (candidate interface)
+
+```bash
+cd /path/to/CAPVIA/ai_interview
+
+# First time only
+npm install --no-bin-links
+
+# Start Electron + React dev mode
+npm run electron-dev
+```
+
+---
+
+## 5. Running Redis Locally
+
+For local development without Upstash, run Redis via Docker:
+
+```bash
+docker run -d --name capvia-redis -p 6379:6379 redis:7-alpine
+
+# Verify
 redis-cli ping
-# Expected response: PONG
-```
-If not running:
-```bash
-brew services start redis
+# Expected: PONG
 ```
 
-### Service 2: CAPVIA Core Backend
-```bash
-cd capvia_platform
-source venv/bin/activate
-uvicorn main.py --host 127.0.0.1 --port 8000 --reload
+Update `.env`:
 ```
-
-### Service 3: CAPVIA Web HR & Candidate Frontend
-```bash
-cd capvia_platform/frontend
-npm run dev
-```
-
-### Service 4: Mock Microservice Pipelines
-Spin up the ATS, Simulation, and Interview servers on their corresponding ports (ports `8001`, `8002`, `8003`).
-
----
-
-## 2. Database Migrations & Administration
-
-CAPVIA uses Alembic for tracking structural schema changes in PostgreSQL.
-
-### Run Existing Migrations
-```bash
-cd capvia_platform
-source venv/bin/activate
-alembic upgrade head
-```
-
-### Create a New Schema Migration
-When modifying model attributes in `capvia_platform/models/models.py`, generate a new migration script using auto-generation:
-```bash
-alembic revision --autogenerate -m "add_custom_profile_fields_to_user"
-```
-Review the auto-generated migration file created in `capvia_platform/alembic/versions/`. Once verified, apply it:
-```bash
-alembic upgrade head
-```
-
-### Roll Back the Latest Migration
-```bash
-alembic downgrade -1
-```
-
-### Reset Database Environment
-To clean the local schema and reset all tables:
-```bash
-cd capvia_platform
-source venv/bin/activate
-python3 drop_tables.py
-alembic upgrade head
+REDIS_URL=redis://localhost:6379/0
 ```
 
 ---
 
-## 3. Seeding Test Data
+## 6. Running Celery Workers
 
-A helper script is provided to populate the database with realistic companies, internships, candidates, and multi-stage evaluation records:
+CAPVIA Gateway uses Celery for background task processing:
+
+```bash
+cd /path/to/CAPVIA/capvia_platform
+source venv/bin/activate
+
+# Start Celery worker
+celery -A capvia_platform.tasks worker --loglevel=info
+
+# Start Celery Beat scheduler (for periodic tasks)
+celery -A capvia_platform.tasks beat --loglevel=info
+
+# Monitor tasks with Flower (optional)
+pip install flower
+celery -A capvia_platform.tasks flower --port=5555
+# Dashboard: http://localhost:5555
+```
+
+---
+
+## 7. Database Migrations
+
+### Apply All Pending Migrations
+
 ```bash
 cd capvia_platform
 source venv/bin/activate
-python3 scripts/seed_db.py
+python -m alembic upgrade head
 ```
-This adds:
-- `jane.hr@recruiter.com` (HR role, password `RecruiterSecure123!`)
-- `john.doe@candidate.com` (Student role, password `CandidateSecure123!`)
-- 1 Verified Company (Acme Capvia AI Corp)
-- 2 Internships (AI Platform Engineer Intern, Frontend Intern)
-- Full evaluations in various stage statuses.
+
+### Check Current Migration State
+
+```bash
+python -m alembic current
+```
+
+### Create a New Migration
+
+After modifying `models/models.py`:
+
+```bash
+python -m alembic revision --autogenerate -m "Add new_field to users"
+# Creates: alembic/versions/<revision_id>_add_new_field_to_users.py
+```
+
+Review the generated file before applying:
+
+```bash
+cat alembic/versions/<revision_id>_*.py
+python -m alembic upgrade head
+```
+
+### Roll Back One Migration
+
+```bash
+python -m alembic downgrade -1
+```
+
+### Roll Back to a Specific Revision
+
+```bash
+python -m alembic downgrade <revision_id>
+```
+
+### Show Migration History
+
+```bash
+python -m alembic history --verbose
+```
 
 ---
 
-## 4. Debugging & Verification Routines
+## 8. Reset Database (Development Only)
 
-### Debugging REST APIs via Terminal
-Query endpoint routers directly using `curl`:
+> ⚠️ **WARNING:** This destroys all data. Only for development.
+
 ```bash
-# Health checks
-curl -i http://localhost:8000/api/v1/health
+cd capvia_platform
+source venv/bin/activate
 
-# Public internship listings search
-curl -i "http://localhost:8000/api/v1/internships?search=Platform&limit=10"
-```
+# Option A: Use the drop script
+python drop_tables.py
 
-### Debugging Local PostgreSQL Records
-Query database rows directly from the CLI:
-```bash
-psql capvia_dev_db
-```
-SQL checks:
-```sql
--- View all applicants and current workflow stages
-SELECT id, candidate_id, vacancy_id, status, current_stage FROM applications;
+# Option B: Direct Alembic downgrade to base
+python -m alembic downgrade base
 
--- Check final rankings and recommendation tiers
-SELECT application_id, final_score, internship_rank, recommendation_tier FROM rankings ORDER BY final_score DESC;
-```
-
-### Debugging Cache Keys in Redis
-```bash
-redis-cli
-127.0.0.1:6379> keys *
-127.0.0.1:6379> get "auth:refresh:john.doe@candidate.com"
+# Recreate
+python -m alembic upgrade head
 ```
 
 ---
 
-## 5. Webhook Auditing and Integration Tests
+## 9. Seed Database
 
-For microservice webhook callback testing, trigger manual webhooks via `curl` to simulate the external candidate evaluations:
+### Create Admin/HR User
 
-### Simulate ATS Resume Processing Completed Webhook
 ```bash
-curl -X POST http://localhost:8000/api/v1/gateway/webhooks/ats \
+cd capvia_platform
+source venv/bin/activate
+
+python -c "
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from capvia_platform.models.models import User, UserRole
+from capvia_platform.utils.auth import hash_password
+from capvia_platform.core.config import settings
+
+async def seed():
+    engine = create_async_engine(settings.DATABASE_URL)
+    async with AsyncSession(engine) as s:
+        # HR User
+        hr = User(
+            email='hr@capvia.io',
+            password_hash=hash_password('HrCapvia2024!'),
+            full_name='HR Manager',
+            role=UserRole.HR,
+            is_active=True
+        )
+        # Admin User
+        admin = User(
+            email='admin@capvia.io',
+            password_hash=hash_password('AdminCapvia2024!'),
+            full_name='Platform Admin',
+            role=UserRole.ADMIN,
+            is_active=True
+        )
+        s.add_all([hr, admin])
+        await s.commit()
+        print('Seeded: hr@capvia.io, admin@capvia.io')
+
+asyncio.run(seed())
+"
+```
+
+### Seed Sample Company and Internship
+
+```bash
+python -c "
+import asyncio, uuid
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from capvia_platform.models.models import Company, Internship, InternshipStatus, WorkMode
+from capvia_platform.core.config import settings
+
+async def seed():
+    engine = create_async_engine(settings.DATABASE_URL)
+    async with AsyncSession(engine) as s:
+        company = Company(
+            name='TechStartup India',
+            industry='Technology',
+            headquarters='Mumbai, India',
+            founded_year=2022,
+            employee_count='11-50',
+            is_verified=True,
+        )
+        s.add(company)
+        await s.flush()
+        
+        internship = Internship(
+            company_id=company.id,
+            title='Backend Developer Intern',
+            description='Build scalable APIs using FastAPI and PostgreSQL.',
+            responsibilities=['Write REST APIs', 'Optimize DB queries', 'Write tests'],
+            required_skills=['Python', 'FastAPI', 'PostgreSQL', 'Redis'],
+            technologies=['Python', 'FastAPI', 'SQLAlchemy', 'Docker'],
+            experience_level='ENTRY',
+            status=InternshipStatus.PUBLISHED,
+            is_active=True,
+            work_mode=WorkMode.REMOTE,
+            duration_weeks=12,
+            stipend_min=15000,
+            stipend_max=25000,
+            stipend_currency='INR',
+            openings=5,
+        )
+        s.add(internship)
+        await s.commit()
+        print(f'Seeded: Company={company.id}, Internship={internship.id}')
+
+asyncio.run(seed())
+"
+```
+
+---
+
+## 10. Inspecting Logs
+
+### Gateway Logs (Real-time)
+
+```bash
+# Uvicorn prints structured logs by default
+# To increase verbosity:
+uvicorn capvia_platform.main:app --port 8000 --log-level debug --reload
+```
+
+### View Application Request Logs
+
+The `RequestLoggingMiddleware` logs every request:
+```
+2024-06-21 10:23:45 INFO [request_log] POST /api/v1/auth/login | 200 | 45ms
+```
+
+### Filter Specific Log Levels
+
+```bash
+# Run and filter for errors only
+uvicorn capvia_platform.main:app --port 8000 2>&1 | grep -E "ERROR|WARNING"
+```
+
+---
+
+## 11. Debugging APIs
+
+### Using Swagger UI
+
+http://localhost:8000/docs — Interactive API explorer with authentication support.
+
+1. Click **Authorize** (top right)
+2. Enter: `Bearer <your_access_token>`
+3. Execute any endpoint directly from the browser
+
+### Using curl
+
+```bash
+# Get an access token
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -H "X-CAPVIA-Signature: your_configured_ats_webhook_secret_key" \
-  -d '{
-    "ats_resume_uuid": "e30be906-8d6f-4d94-a159-450f38b0561e",
-    "ats_job_uuid": "025db931-1b9a-4c28-98bc-a8863f6a2fe0",
-    "candidate_email": "john.doe@candidate.com",
-    "overall_score": 82.5,
-    "score_band": "High Match",
-    "detected_role": "AI Engineer",
-    "matched_skills": ["Python", "PyTorch", "FastAPI"],
-    "missing_skills": ["Docker"],
-    "fraud_flags": []
-  }'
+  -d '{"email":"hr@capvia.io","password":"HrCapvia2024!"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# List companies (authenticated)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/companies
+
+# List internships
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/internships
+```
+
+### Using httpie (more readable)
+
+```bash
+pip install httpie
+http POST :8000/api/v1/auth/login email=hr@capvia.io password=HrCapvia2024!
+http -A bearer -a "$TOKEN" GET :8000/api/v1/companies
 ```
 
 ---
 
-## 6. Logs Monitoring
+## 12. Debugging JWT
 
-CAPVIA routes standard logs to stdout. To monitor errors, events, and background query logs:
+### Decode a JWT Token (without verification)
 
-### Core Backend logs
-If reloading is active, tail the output of the terminal running `uvicorn`.
-To write output to persistent logs in the workspace:
 ```bash
-uvicorn main.py --reload >> local_app.log 2>&1 &
-tail -f local_app.log
+python3 -c "
+import base64, json, sys
+token = '<paste_token_here>'
+parts = token.split('.')
+payload = parts[1] + '=' * (4 - len(parts[1]) % 4)
+decoded = json.loads(base64.urlsafe_b64decode(payload))
+import datetime
+decoded['exp_readable'] = str(datetime.datetime.utcfromtimestamp(decoded.get('exp', 0)))
+print(json.dumps(decoded, indent=2))
+"
 ```
-Look for keywords:
-- `Greenlet` - indicates ORM lazy load exceptions (see [TROUBLESHOOTING_GUIDE.md](file:///Volumes/KINGSTON/CAPVIA/TROUBLESHOOTING_GUIDE.md)).
-- `HTTPException` - standard API error codes (401, 403, 404).
-- `IntegrityError` - foreign key or unique constraint violations.
+
+### Test JWT in Python
+
+```bash
+python3 -c "
+from capvia_platform.utils.auth import decode_token
+token = '<paste_access_token>'
+claims = decode_token(token, expected_type='access')
+print(claims)
+"
+```
+
+### Common JWT Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `401 Unauthorized` | Token expired | Re-login or use `/auth/refresh` |
+| `401 Not authenticated` | Missing `Bearer ` prefix | Ensure header: `Authorization: Bearer <token>` |
+| `403 Forbidden` | Wrong role | Verify your user's `role` field in DB |
+| `Token reuse detected` | RTR replay attack triggered | All sessions revoked — re-login |
+
+---
+
+## 13. Debugging Webhooks
+
+### Trigger a Test Webhook Manually
+
+```bash
+# First get application_id from your DB
+APPLICATION_ID="<uuid>"
+
+# Simulate ATS_PROCESSED
+curl -X POST "http://localhost:8000/api/v1/test/trigger-webhook?application_id=${APPLICATION_ID}&event=ATS_PROCESSED"
+
+# Simulate SIMULATION_SUBMITTED
+curl -X POST "http://localhost:8000/api/v1/test/trigger-webhook?application_id=${APPLICATION_ID}&event=SIMULATION_SUBMITTED"
+
+# Simulate INTERVIEW_EVALUATED
+curl -X POST "http://localhost:8000/api/v1/test/trigger-webhook?application_id=${APPLICATION_ID}&event=INTERVIEW_EVALUATED"
+```
+
+### Verify HMAC Signature Manually
+
+```bash
+python3 -c "
+import hmac, hashlib, time, json
+
+secret = 'whsec_prod_default_secret_key_change_me'
+timestamp = str(int(time.time()))
+payload = json.dumps({'event': 'TEST', 'data': {'application_id': 'test-uuid'}}).encode()
+
+signed_payload = f'{timestamp}.'.encode() + payload
+signature = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
+print(f'X-CAPVIA-Signature: t={timestamp},v1={signature}')
+"
+```
+
+### Check Webhook Configuration
+
+```bash
+curl http://localhost:8000/api/v1/webhooks/configure  # GET not available — use POST to update
+```
+
+View current config in code: `capvia_platform/routers/webhooks.py` → `WEBHOOK_CONFIG` dict.
+
+---
+
+## 14. Debugging Integrations
+
+### Check ATS Engine Connectivity
+
+```bash
+python3 -c "
+import httpx, asyncio
+async def test():
+    async with httpx.AsyncClient() as c:
+        r = await c.get('http://localhost:8001/health', timeout=5)
+        print('ATS status:', r.status_code, r.json())
+asyncio.run(test())
+"
+```
+
+### Check Simulation Engine Connectivity
+
+```bash
+curl http://localhost:8002/api/health/
+```
+
+### Check Interview Engine Connectivity
+
+```bash
+curl http://localhost:8765/health
+# Expected: {"status": "ok", "service": "AI Interview Evaluator", "version": "1.0.0"}
+```
+
+### Check Redis Connectivity
+
+```bash
+python3 -c "
+import asyncio, redis.asyncio as aioredis, os
+async def test():
+    r = aioredis.from_url(os.environ['REDIS_URL'])
+    await r.set('debug', '1', ex=10)
+    v = await r.get('debug')
+    print('Redis OK:', v)
+asyncio.run(test())
+"
+```
+
+### Check Database Connectivity
+
+```bash
+python3 -c "
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
+from capvia_platform.core.config import settings
+
+async def test():
+    engine = create_async_engine(settings.DATABASE_URL)
+    async with engine.connect() as c:
+        r = await c.execute(text('SELECT count(*) FROM users'))
+        print('Users in DB:', r.scalar())
+asyncio.run(test())
+"
+```
+
+---
+
+## 15. Environment Variables Reference
+
+### CAPVIA Gateway (`.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ | Neon asyncpg connection string |
+| `REDIS_URL` | ✅ | Upstash Redis URL (`rediss://...`) |
+| `SECRET_KEY` | ✅ | JWT signing key (min 32 chars) |
+| `ALGORITHM` | ✅ | JWT algorithm (`HS256`) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | ✅ | Access token TTL (default: 30) |
+| `ENVIRONMENT` | ✅ | `development` or `production` |
+| `ATS_ENGINE_URL` | ✅ | ATS service base URL |
+| `SIMULATION_ENGINE_URL` | ✅ | Simulation service base URL |
+| `INTERVIEW_ENGINE_URL` | ✅ | Interview eval server URL |
+
+### Frontend (`.env.local`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ | Supabase anon key |
+| `UPSTASH_REDIS_REST_URL` | ✅ | Upstash REST URL (server-side only) |
+| `UPSTASH_REDIS_REST_TOKEN` | ✅ | Upstash REST token (server-side only) |
+| `NEXT_PUBLIC_SENTRY_DSN` | Optional | Sentry client DSN |
+| `SENTRY_DSN` | Optional | Sentry server DSN |
+| `NEXT_PUBLIC_API_URL` | ✅ | Gateway base URL (`http://localhost:8000`) |
