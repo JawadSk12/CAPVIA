@@ -1,5 +1,11 @@
+import os
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+
+_CONFIG_DIR = Path(__file__).resolve().parent
+_PLATFORM_DIR = _CONFIG_DIR.parent
+_ENV_FILE = _PLATFORM_DIR / ".env"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CAPVIA API"
@@ -29,6 +35,6 @@ class Settings(BaseSettings):
     # Interview Engine Settings
     INTERVIEW_ENGINE_URL: str = "http://localhost:8765"
     
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
