@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Optional
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
