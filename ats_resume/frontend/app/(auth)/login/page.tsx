@@ -32,8 +32,9 @@ export default function LoginPage() {
     try {
       const user = await login(data.email, data.password);
       toast.success(`Welcome back, ${user.full_name?.split(" ")[0] ?? "there"}!`);
-      if (user.role === "HR")    router.push("/hr/dashboard");
-      else if (user.role === "ADMIN") router.push("/admin/dashboard");
+      const userRole = user.role?.toUpperCase();
+      if (userRole === "HR")    router.push("/hr/dashboard");
+      else if (userRole === "ADMIN") router.push("/admin/dashboard");
       else router.push("/student/dashboard");
     } catch (err: any) {
       const detail = err?.response?.data?.detail;

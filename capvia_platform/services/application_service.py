@@ -217,14 +217,27 @@ class ApplicationService:
         if internship.application_deadline and internship.application_deadline < date.today():
             raise BaseAPIException("The application deadline for this internship has passed.", status_code=400)
 
-        # Duplicate guard
-        dup = await app_repo.find_duplicate(session, current_user.id, internship_id)
-        if dup:
-            raise BaseAPIException(
-                "You have already applied to this internship.",
-                status_code=409, code="DUPLICATE_APPLICATION",
-                details={"existing_application_id": str(dup.id)},
+        # Duplicate guard & unique constraint handling
+        stmt_existing = select(Application).where(
+            and_(
+                Application.candidate_id == current_user.id,
+                Application.vacancy_id == internship_id,
+                Application.deleted_at == None
             )
+        )
+        res_existing = await session.execute(stmt_existing)
+        existing_apps = res_existing.scalars().all()
+        
+        for existing_app in existing_apps:
+            if existing_app.status == ApplicationStatus.WITHDRAWN:
+                # Soft-delete the withdrawn application so the unique constraint is satisfied
+                existing_app.deleted_at = datetime.utcnow()
+            else:
+                raise BaseAPIException(
+                    "You have already applied to this internship.",
+                    status_code=409, code="DUPLICATE_APPLICATION",
+                    details={"existing_application_id": str(existing_app.id)},
+                )
 
         # Application limit guard
         if internship.application_limit:

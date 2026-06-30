@@ -23,12 +23,12 @@ const STEPS: Step[] = ['camera', 'microphone', 'speaker', 'system'];
 
 // ─── Step Config ──────────────────────────────────────────────────────────────
 
-const STEP_CONFIG: Record<Step, { icon: string; label: string; desc: string; color: string }> = {
-  camera:     { icon: '📷', label: 'Camera',      desc: 'Verifying video feed quality',         color: 'from-blue-500 to-cyan-400' },
-  microphone: { icon: '🎤', label: 'Microphone',  desc: 'Detecting audio input levels',         color: 'from-purple-500 to-pink-400' },
-  speaker:    { icon: '🔊', label: 'Speaker',     desc: 'Confirming audio playback',            color: 'from-orange-500 to-amber-400' },
-  system:     { icon: '⚡', label: 'System',      desc: 'Checking browser & connection',        color: 'from-green-500 to-emerald-400' },
-  complete:   { icon: '🎯', label: 'Complete',    desc: 'All systems ready!',                   color: 'from-green-500 to-teal-400' },
+const STEP_CONFIG: Record<Step, { icon: string; label: string; desc: string; color: string; badge: string }> = {
+  camera:     { icon: '📷', label: 'Camera',      desc: 'Verifying video feed quality',         color: 'from-[#0D47A1] to-[#42A5F5]',   badge: '#0D47A1' },
+  microphone: { icon: '🎤', label: 'Microphone',  desc: 'Detecting audio input levels',         color: 'from-[#7C3AED] to-[#A78BFA]',   badge: '#7C3AED' },
+  speaker:    { icon: '🔊', label: 'Speaker',     desc: 'Confirming audio playback',            color: 'from-[#F59E0B] to-[#FCD34D]',   badge: '#F59E0B' },
+  system:     { icon: '⚡', label: 'System',      desc: 'Checking browser & connection',        color: 'from-[#10B981] to-[#34D399]',   badge: '#10B981' },
+  complete:   { icon: '🎯', label: 'Complete',    desc: 'All systems ready!',                   color: 'from-[#10B981] to-[#059669]',   badge: '#10B981' },
 };
 
 // ─── Animated Mic Bars Helper ─────────────────────────────────────────────────
@@ -180,14 +180,15 @@ const StepProgress: React.FC<{
 // ─── System Check Mini Row ────────────────────────────────────────────────────
 
 const SystemRow: React.FC<{ icon: string; label: string; value: string; ok: boolean }> = ({ icon, label, value, ok }) => (
-  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-800/60">
+  <div className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-[#F8FAFC] border border-slate-100">
     <div className="flex items-center gap-2">
       <span>{icon}</span>
-      <span className="text-xs text-gray-400">{label}</span>
+      <span className="text-xs text-slate-500 font-medium">{label}</span>
     </div>
     <div className="flex items-center gap-2">
-      <span className="text-xs font-mono text-gray-300">{value}</span>
-      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${ok ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+      <span className="text-xs font-mono text-slate-700 font-semibold">{value}</span>
+      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white`}
+        style={{ background: ok ? '#10B981' : '#EF4444' }}>
         {ok ? '✓' : '✗'}
       </span>
     </div>
@@ -381,36 +382,40 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #F8FAFC 0%, #EEF4FF 50%, #F0F9FF 100%)' }}>
 
       {/* Background decorative blobs */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-900/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-purple-900/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-20 blur-3xl pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #42A5F5, transparent)' }} />
+      <div className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full opacity-15 blur-3xl pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #FFC107, transparent)' }} />
 
       {/* Header */}
       <div className="text-center mb-8 z-10">
-        <div className="inline-flex items-center gap-2 bg-blue-900/30 border border-blue-700/50 rounded-full px-4 py-1.5 mb-4">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-          <span className="text-blue-300 text-xs font-semibold tracking-wide uppercase">Pre-Interview Setup</span>
+        <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-4"
+          style={{ background: 'rgba(13,71,161,0.08)', border: '1px solid rgba(13,71,161,0.2)' }}>
+          <span className="w-2 h-2 rounded-full bg-[#0D47A1] animate-pulse" />
+          <span className="text-xs font-semibold tracking-wide uppercase" style={{ color: '#0D47A1' }}>Device Check</span>
         </div>
-        <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">
-          System Check
+        <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">
+          System Diagnostics
         </h1>
-        <p className="text-gray-400 text-base max-w-md mx-auto">
+        <p className="text-slate-500 text-base max-w-md mx-auto">
           Let's make sure your devices are ready. This takes about 30 seconds.
         </p>
       </div>
 
       {/* Overall progress mini-bar */}
       <div className="w-full max-w-xl mb-6 z-10">
-        <div className="flex justify-between text-xs text-gray-500 mb-1">
-          <span>{passedCount} of {STEPS.length} checks passed</span>
-          <span>{Math.round((passedCount / STEPS.length) * 100)}%</span>
+        <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+          <span className="font-medium">{passedCount} of {STEPS.length} checks passed</span>
+          <span className="font-bold" style={{ color: '#0D47A1' }}>{Math.round((passedCount / STEPS.length) * 100)}%</span>
         </div>
-        <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 transition-all duration-700"
-            style={{ width: `${(passedCount / STEPS.length) * 100}%` }}
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${(passedCount / STEPS.length) * 100}%`, background: 'linear-gradient(90deg, #0D47A1, #42A5F5, #10B981)' }}
           />
         </div>
       </div>
@@ -424,34 +429,36 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
       <div
         className={`w-full max-w-xl z-10 transition-all duration-200 ${transition ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}
       >
-        <div className="relative bg-gray-900/80 backdrop-blur-md border border-gray-700/60 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="relative bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
 
           {/* Gradient top bar */}
-          <div className={`h-1 w-full bg-gradient-to-r ${cfg.color}`} />
+          <div className={`h-1.5 w-full bg-gradient-to-r ${cfg.color}`} />
 
           {/* Step Header */}
           <div className="px-7 pt-6 pb-4 flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${cfg.color} flex items-center justify-center text-2xl shadow-lg flex-shrink-0`}>
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${cfg.color} flex items-center justify-center text-2xl shadow-md flex-shrink-0`}>
               {cfg.icon}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">{cfg.label}</h2>
-              <p className="text-gray-400 text-sm">{cfg.desc}</p>
+              <h2 className="text-xl font-bold text-slate-900">{cfg.label}</h2>
+              <p className="text-slate-500 text-sm">{cfg.desc}</p>
             </div>
             {curState.status === 'passed' && (
-              <div className="ml-auto flex-shrink-0 bg-green-600/20 border border-green-600/40 rounded-lg px-3 py-1">
-                <span className="text-green-400 text-xs font-bold">✓ PASSED</span>
+              <div className="ml-auto flex-shrink-0 rounded-lg px-3 py-1.5"
+                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                <span className="text-[#10B981] text-xs font-bold">✓ PASSED</span>
               </div>
             )}
             {curState.status === 'failed' && (
-              <div className="ml-auto flex-shrink-0 bg-red-600/20 border border-red-600/40 rounded-lg px-3 py-1">
-                <span className="text-red-400 text-xs font-bold">✗ FAILED</span>
+              <div className="ml-auto flex-shrink-0 rounded-lg px-3 py-1.5"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                <span className="text-[#EF4444] text-xs font-bold">✗ FAILED</span>
               </div>
             )}
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-gray-800 mx-7" />
+          <div className="h-px bg-slate-100 mx-7" />
 
           {/* Step Body */}
           <div className="px-7 py-6 space-y-5">
@@ -459,7 +466,7 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
             {/* ── CAMERA ── */}
             {currentStep === 'camera' && (
               <div className="space-y-4">
-                <div className="relative bg-black rounded-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                <div className="relative bg-slate-900 rounded-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
                   <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
                   <CameraOverlay status={curState.status} />
                 </div>
@@ -471,26 +478,29 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
                       { icon: '🎨', label: 'Color space', value: 'sRGB' },
                       { icon: '⚡', label: 'Frame rate',  value: '30fps' },
                     ].map(({ icon, label, value }) => (
-                      <div key={label} className="bg-gray-800/60 rounded-lg p-2.5 text-center border border-gray-700/40">
+                      <div key={label} className="bg-[#F8FAFC] rounded-xl p-3 text-center border border-slate-200">
                         <div className="text-base">{icon}</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">{label}</div>
-                        <div className="text-xs font-semibold text-gray-200 mt-0.5">{value}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-medium">{label}</div>
+                        <div className="text-xs font-bold text-slate-700 mt-0.5">{value}</div>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {curState.error && (
-                  <div className="flex items-start gap-3 bg-red-950/40 border border-red-800/50 rounded-lg p-3">
-                    <span className="text-red-400 text-lg flex-shrink-0">⚠️</span>
+                  <div className="flex items-start gap-3 rounded-xl p-3.5"
+                    style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <span className="text-[#EF4444] text-lg flex-shrink-0">⚠️</span>
                     <div>
-                      <p className="text-red-300 text-sm font-medium">{curState.error}</p>
-                      <p className="text-red-500 text-xs mt-0.5">Open browser settings → Privacy → Camera → Allow</p>
+                      <p className="text-[#EF4444] text-sm font-semibold">{curState.error}</p>
+                      <p className="text-slate-500 text-xs mt-0.5">Open browser settings → Privacy → Camera → Allow</p>
                     </div>
                   </div>
                 )}
                 {curState.status === 'failed' && (
-                  <button onClick={testCamera} className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold text-sm transition-all">
+                  <button onClick={testCamera}
+                    className="w-full py-2.5 text-white rounded-xl font-bold text-sm transition-all"
+                    style={{ background: '#0D47A1' }}>
                     🔄 Retry Camera
                   </button>
                 )}
@@ -500,10 +510,10 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
             {/* ── MICROPHONE ── */}
             {currentStep === 'microphone' && (
               <div className="space-y-4">
-                <div className="bg-gray-800/50 border border-gray-700/40 rounded-xl p-6 space-y-4">
+                <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-6 space-y-4">
                   <div className="text-center">
-                    <p className="text-gray-300 text-sm">Speak clearly into your microphone</p>
-                    <p className="text-gray-500 text-xs mt-1">Say something like "Hello, testing 1-2-3"</p>
+                    <p className="text-slate-700 text-sm font-medium">Speak clearly into your microphone</p>
+                    <p className="text-slate-400 text-xs mt-1">Say something like "Hello, testing 1-2-3"</p>
                   </div>
                   <MicBars volume={micVolume} />
 
@@ -619,12 +629,13 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
                 {curState.status === 'testing' ? (
                   <div className="flex flex-col items-center gap-4 py-6">
                     <div className="relative">
-                      <div className="w-16 h-16 rounded-full border-4 border-green-500/30 border-t-green-400 animate-spin" />
+                      <div className="w-16 h-16 rounded-full border-4 border-slate-200 animate-spin"
+                        style={{ borderTopColor: '#0D47A1' }} />
                       <div className="absolute inset-0 flex items-center justify-center text-2xl">⚡</div>
                     </div>
                     <div className="text-center">
-                      <p className="text-gray-300 font-medium">Running system checks…</p>
-                      <p className="text-gray-500 text-xs mt-1">Checking browser, OS, and network</p>
+                      <p className="text-slate-700 font-semibold">Running system checks…</p>
+                      <p className="text-slate-400 text-xs mt-1">Checking browser, OS, and network</p>
                     </div>
                   </div>
                 ) : sysInfo ? (
@@ -645,15 +656,16 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
               <div className="flex flex-col items-center gap-6 py-2">
                 {/* Animated checkmark */}
                 <div className="relative">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-400 flex items-center justify-center shadow-2xl shadow-green-900/50">
-                    <span className="text-3xl text-white">✓</span>
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-xl"
+                    style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+                    <span className="text-3xl text-white font-bold">✓</span>
                   </div>
-                  <div className="absolute inset-0 rounded-full bg-green-400 opacity-20 animate-ping" />
+                  <div className="absolute inset-0 rounded-full bg-[#10B981] opacity-20 animate-ping" />
                 </div>
 
                 <div className="text-center">
-                  <h3 className="text-2xl font-extrabold text-white mb-1">All Systems Go! 🚀</h3>
-                  <p className="text-gray-400 text-sm">Your setup is verified and ready for the interview.</p>
+                  <h3 className="text-2xl font-extrabold text-slate-900 mb-1">All Systems Ready! 🚀</h3>
+                  <p className="text-slate-500 text-sm">Your setup is verified and ready for the interview.</p>
                 </div>
 
                 {/* Summary cards */}
@@ -662,23 +674,23 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
                     const c = STEP_CONFIG[step];
                     const s = stepStates[step];
                     return (
-                      <div key={step} className={`rounded-xl p-3 border flex items-center gap-3 ${
-                        s.status === 'passed'
-                          ? 'bg-green-950/30 border-green-800/50'
-                          : 'bg-red-950/30 border-red-800/50'
-                      }`}>
+                      <div key={step} className="rounded-xl p-3 flex items-center gap-3"
+                        style={{
+                          background: s.status === 'passed' ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
+                          border: s.status === 'passed' ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(239,68,68,0.25)',
+                        }}>
                         <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.color} flex items-center justify-center text-base flex-shrink-0`}>
                           {c.icon}
                         </div>
                         <div>
-                          <div className={`text-xs font-bold ${s.status === 'passed' ? 'text-green-300' : 'text-red-300'}`}>
+                          <div className={`text-xs font-bold ${s.status === 'passed' ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                             {c.label}
                           </div>
-                          <div className={`text-[10px] ${s.status === 'passed' ? 'text-green-500' : 'text-red-500'}`}>
+                          <div className={`text-[10px] ${s.status === 'passed' ? 'text-emerald-500' : 'text-red-400'}`}>
                             {s.status === 'passed' ? s.detail || 'Passed' : 'Failed'}
                           </div>
                         </div>
-                        <span className={`ml-auto text-lg ${s.status === 'passed' ? 'text-green-400' : 'text-red-400'}`}>
+                        <span className={`ml-auto font-bold text-base ${s.status === 'passed' ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                           {s.status === 'passed' ? '✓' : '✗'}
                         </span>
                       </div>
@@ -693,7 +705,7 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
           <div className="px-7 pb-7 flex gap-3">
             <button
               onClick={handleBack}
-              className="px-5 py-3 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 rounded-xl font-semibold text-sm transition-all"
+              className="px-5 py-3 border border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300 rounded-xl font-semibold text-sm transition-all bg-white"
             >
               ← Back
             </button>
@@ -702,11 +714,13 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
               <button
                 onClick={goNext}
                 disabled={curState.status !== 'passed'}
-                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-                  curState.status === 'passed'
-                    ? `bg-gradient-to-r ${cfg.color} text-white shadow-lg hover:scale-[1.01] hover:shadow-xl active:scale-[0.99]`
-                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                }`}
+                className="flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2"
+                style={{
+                  background: curState.status === 'passed' ? '#0D47A1' : '#E2E8F0',
+                  color: curState.status === 'passed' ? '#fff' : '#94A3B8',
+                  cursor: curState.status !== 'passed' ? 'not-allowed' : 'pointer',
+                  boxShadow: curState.status === 'passed' ? '0 4px 14px rgba(13,71,161,0.3)' : 'none',
+                }}
               >
                 {curState.status === 'passed' ? (
                   <>
@@ -715,7 +729,7 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
                   </>
                 ) : curState.status === 'testing' ? (
                   <>
-                    <span className="w-3.5 h-3.5 rounded-full border-2 border-gray-500 border-t-transparent animate-spin" />
+                    <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" />
                     Running check…
                   </>
                 ) : 'Fix issue to continue'}
@@ -725,9 +739,10 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
             {currentStep === 'complete' && (
               <button
                 onClick={handleContinue}
-                className="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-green-900/40 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+                className="flex-1 py-3 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 14px rgba(16,185,129,0.35)' }}
               >
-                Start Interview 🎯
+                Proceed to Interview 🎯
               </button>
             )}
           </div>
@@ -735,7 +750,7 @@ const DeviceValidation: React.FC<{ onComplete?: () => void; onBack?: () => void 
       </div>
 
       {/* Bottom tips */}
-      <div className="mt-6 flex gap-4 text-xs text-gray-600 z-10">
+      <div className="mt-6 flex gap-4 text-xs text-slate-400 z-10">
         <span>🔒 Your video is private</span>
         <span>•</span>
         <span>💡 Use a quiet environment</span>

@@ -1,18 +1,19 @@
 import uuid
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Request, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 import redis.asyncio as aioredis
 
+from capvia_platform.core.config import settings
 from capvia_platform.api.dependencies import get_db, get_redis, get_current_user
 from capvia_platform.schemas.schemas import (
     UserRegisterRequest, UserLoginRequest, TokenResponse,
     RefreshTokenRequest, ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest
 )
-from capvia_platform.models.models import User, UserRole, UserSession, ActivityLog
+from capvia_platform.models.models import User, UserRole, UserSession, ActivityLog, Company, CompanyMember, MemberRole
 from capvia_platform.utils.auth import (
     hash_password, verify_password, hash_token,
     create_access_token, create_refresh_token, decode_token
@@ -28,8 +29,8 @@ async def register_user(
     redis: aioredis.Redis = Depends(get_redis)
 ):
     """
-    Registers a new user (defaulting to STUDENT/candidate).
-    Enforces privilege escalation checks: standard users cannot register as admin or hr.
+    Registers a new user (Candidate/STUDENT or Recruiter/HR).
+    Enforces privilege escalation checks: standard users cannot register as admin.
     """
     # Check if email is already taken
     stmt = select(User).where(User.email == payload.email)
@@ -39,10 +40,10 @@ async def register_user(
         
     # Prevent privilege escalation
     target_role = payload.role.lower() if payload.role else "candidate"
-    if target_role in ["hr", "admin"]:
-        raise AuthorizationException("Only administrators can provision staff/HR accounts")
+    if target_role == "admin":
+        raise AuthorizationException("Only administrators can provision admin accounts")
         
-    db_role = UserRole.STUDENT # candidate
+    db_role = UserRole.HR if target_role == "hr" else UserRole.STUDENT
     
     # Hash password using bcrypt
     hashed_pwd = hash_password(payload.password)
@@ -52,11 +53,37 @@ async def register_user(
         password_hash=hashed_pwd,
         full_name=payload.full_name,
         role=db_role,
-        is_active=False # Inactive until email is verified
+        is_active=True if settings.ENVIRONMENT == "development" else False
     )
     
     db.add(new_user)
     await db.flush()
+    
+    # Handle HR Company Setup
+    if db_role == UserRole.HR:
+        company_name = payload.company_name or f"{payload.full_name}'s Company"
+        # Avoid unique constraint on company names
+        stmt_comp = select(Company).where(Company.name == company_name)
+        res_comp = await db.execute(stmt_comp)
+        company = res_comp.scalar_one_or_none()
+        
+        if not company:
+            company = Company(
+                id=uuid.uuid4(),
+                name=company_name,
+                created_by=new_user.id
+            )
+            db.add(company)
+            await db.flush()
+            
+        member = CompanyMember(
+            id=uuid.uuid4(),
+            company_id=company.id,
+            user_id=new_user.id,
+            member_role=MemberRole.OWNER
+        )
+        db.add(member)
+        await db.flush()
     
     # Write Audit Log
     audit = ActivityLog(
@@ -74,11 +101,35 @@ async def register_user(
     # Print simulated email link to console
     verify_link = f"http://localhost:3000/auth/verify?token={verify_token}"
     print(f"\n[SIMULATED EMAIL SENDER] Verification link for {payload.email}:\n{verify_link}\n")
+    role_str = "candidate" if new_user.role == UserRole.STUDENT else new_user.role.value.lower()
+    access_token = create_access_token(new_user.id, new_user.email, role_str)
+    refresh_token = create_refresh_token(new_user.id)
+    
+    ref_hash = hash_token(refresh_token)
+    session_record = UserSession(
+        user_id=new_user.id,
+        refresh_token_hash=ref_hash,
+        device_info=None,
+        ip_address=None,
+        expires_at=datetime.utcnow() + timedelta(days=7)
+    )
+    db.add(session_record)
     
     return {
         "success": True, 
         "message": "User registered successfully. Please verify your email.",
-        "simulated_token": verify_token
+        "simulated_token": verify_token,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": 1800,
+        "user": {
+            "id": str(new_user.id),
+            "email": new_user.email,
+            "full_name": new_user.full_name,
+            "role": role_str,
+            "is_active": new_user.is_active,
+            "is_email_verified": new_user.is_active,
+        }
     }
 
 @router.post("/login", response_model=TokenResponse, tags=["Auth"])
@@ -205,8 +256,9 @@ async def refresh_tokens(
     
     # 4. RTR Replay Attack Protection:
     # If the token exists but is already marked revoked, it means it was rotated previously,
-    # indicating a reuse attempt (someone stole the token).
-    if not session_record or session_record.is_revoked or session_record.expires_at < datetime.utcnow():
+    now = datetime.now(timezone.utc)
+    expires_at_aware = session_record.expires_at.replace(tzinfo=timezone.utc) if session_record and session_record.expires_at.tzinfo is None else (session_record.expires_at if session_record else None)
+    if not session_record or session_record.is_revoked or expires_at_aware < now:
         # Threat detected: Revoke ALL sessions for this user
         revoke_all = update(UserSession).where(UserSession.user_id == user_uuid).values(is_revoked=True)
         await db.execute(revoke_all)
@@ -371,3 +423,19 @@ async def verify_email(
     db.add(audit)
     
     return {"success": True, "message": "Email address verified successfully. Your account is now active."}
+
+@router.get("/me", tags=["Auth"])
+async def get_my_profile(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns the currently logged-in user's profile.
+    """
+    role_str = "candidate" if current_user.role == UserRole.STUDENT else current_user.role.value.lower()
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": role_str,
+        "is_active": current_user.is_active,
+    }

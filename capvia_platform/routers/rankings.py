@@ -18,7 +18,7 @@ from sqlalchemy import select
 
 from capvia_platform.api.dependencies import get_db, get_current_user
 from capvia_platform.core.exceptions import ResourceNotFoundException, AuthorizationException
-from capvia_platform.models.models import Application, Ranking, UserRole
+from capvia_platform.models.models import Application, Ranking, UserRole, User
 from capvia_platform.services.ranking_service import RankingService, _format_ranking_row
 
 logger = logging.getLogger("rankings_router")
@@ -29,20 +29,18 @@ router = APIRouter()
 # RBAC guard helpers
 # =========================================================================
 
-def _assert_hr_or_admin(current_user: dict):
-    role = current_user.get("role", "")
-    allowed = {UserRole.HR.value, UserRole.ADMIN.value, "HR", "ADMIN", "system_admin"}
+def _assert_hr_or_admin(current_user: User):
+    role = current_user.role.value
+    allowed = {UserRole.HR.value, UserRole.ADMIN.value}
     if role not in allowed:
-        roles_list = current_user.get("roles", [])
-        if "system_admin" not in roles_list:
-            raise AuthorizationException("Only HR, Admin, or System can access this endpoint.")
+        raise AuthorizationException("Only HR or Admin can access this endpoint.")
 
 
-def _assert_candidate_access(current_user: dict, app: Application):
+def _assert_candidate_access(current_user: User, app: Application):
     """Candidates can only view their own ranking; HR/Admin see all."""
-    role = current_user.get("role", "")
+    role = current_user.role.value
     if role == UserRole.STUDENT.value:
-        user_id = current_user.get("sub") or current_user.get("user_id")
+        user_id = str(current_user.id)
         if user_id and str(app.candidate_id) != user_id:
             raise AuthorizationException("Candidates can only view their own ranking.")
 
@@ -77,9 +75,9 @@ async def compute_ranking(
     if not app:
         raise ResourceNotFoundException("Application", application_id)
 
-    user_id_str = current_user.get("sub") or current_user.get("user_id")
+    user_id_str = str(current_user.id)
     actor_uuid = uuid.UUID(user_id_str) if user_id_str else None
-    role = current_user.get("role", "SYSTEM")
+    role = current_user.role.value
 
     ranking = await RankingService.compute_ranking(
         db,
@@ -197,9 +195,9 @@ async def rerank_internship_cohort(
     _assert_hr_or_admin(current_user)
 
     internship_uuid = uuid.UUID(internship_id)
-    user_id_str = current_user.get("sub") or current_user.get("user_id")
+    user_id_str = str(current_user.id)
     actor_uuid = uuid.UUID(user_id_str) if user_id_str else None
-    role = current_user.get("role", "SYSTEM")
+    role = current_user.role.value
 
     summary = await RankingService.rank_internship_cohort(
         db,

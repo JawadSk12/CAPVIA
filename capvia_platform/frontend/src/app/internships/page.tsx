@@ -1,47 +1,158 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { internshipApi } from '../../services/api';
 import { Internship, InternshipFilters } from '../../types';
 import { useAuthStore } from '../../store/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import ApplyButton from '@/components/ApplyButton';
+import {
+  Search,
+  MapPin,
+  Calendar,
+  DollarSign,
+  Clock,
+  Briefcase,
+  Bookmark,
+  ChevronRight,
+  Filter,
+  Sparkles,
+  Award,
+  ChevronDown,
+  X,
+  Plus,
+  AlertCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const WORK_MODES = ['REMOTE', 'HYBRID', 'ONSITE'];
-const EXP_LEVELS = ['ENTRY', 'MID', 'SENIOR'];
+const WORK_MODES = [
+  { value: 'REMOTE', label: 'Remote' },
+  { value: 'HYBRID', label: 'Hybrid' },
+  { value: 'ONSITE', label: 'Onsite' },
+];
+
+const EXP_LEVELS = [
+  { value: 'ENTRY', label: 'Entry Level' },
+  { value: 'MID', label: 'Mid Level' },
+  { value: 'SENIOR', label: 'Senior' },
+];
+
+const POPULAR_CATEGORIES = [
+  'Machine Learning',
+  'AI',
+  'Data Science',
+  'Backend',
+  'Frontend',
+  'DevOps',
+  'Cloud',
+  'Cyber Security',
+  'UI UX',
+  'Product',
+  'Marketing',
+  'Business',
+  'Finance',
+];
+
 const SORT_OPTIONS = [
   { value: 'created_at', label: 'Newest First' },
-  { value: 'view_count', label: 'Most Viewed' },
+  { value: 'view_count', label: 'Most Popular' },
   { value: 'application_deadline', label: 'Deadline' },
-  { value: 'stipend_min', label: 'Stipend' },
+  { value: 'stipend_min', label: 'Highest Salary' },
 ];
 
 export default function InternshipsPage() {
   return (
-    <ProtectedRoute>
-      <InternshipsContent />
+    <ProtectedRoute allowedRoles={['candidate', 'hr', 'admin']}>
+      <UnifiedLayout title="Internship Marketplace">
+        <InternshipsContent />
+      </UnifiedLayout>
     </ProtectedRoute>
   );
 }
 
 function InternshipsContent() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [internships, setInternships] = useState<Internship[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter States
   const [filters, setFilters] = useState<InternshipFilters>({
-    sort_by: 'created_at', sort_dir: 'desc'
+    sort_by: 'created_at',
+    sort_dir: 'desc',
   });
   const [searchInput, setSearchInput] = useState('');
-  const PER_PAGE = 20;
+  const [locationInput, setLocationInput] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  
+  // Bookmarks LocalState
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  
+  // Mobile Filter Drawer Toggle
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const PER_PAGE = 10;
+
+  // Retrieve saved jobs list from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('capvia_saved_internships');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setSavedIds(parsed.map((x: any) => x.id || x));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
+  // Sync bookmark list
+  const toggleSave = (job: Internship, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (typeof window === 'undefined') return;
+
+    let savedList: any[] = [];
+    const stored = localStorage.getItem('capvia_saved_internships');
+    if (stored) {
+      try {
+        savedList = JSON.parse(stored);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const exists = savedList.some((x) => x.id === job.id);
+    let updated;
+    if (exists) {
+      updated = savedList.filter((x) => x.id !== job.id);
+    } else {
+      updated = [...savedList, job];
+    }
+
+    localStorage.setItem('capvia_saved_internships', JSON.stringify(updated));
+    setSavedIds(updated.map((x) => x.id));
+  };
 
   const fetchInternships = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await internshipApi.list({ ...filters, page, per_page: PER_PAGE });
+      // Map has_stipend strictly from filter query
+      const data = await internshipApi.list({
+        ...filters,
+        page,
+        per_page: PER_PAGE,
+      });
       setInternships(data.internships || []);
       setTotal(data.total || 0);
     } catch (e: any) {
@@ -51,263 +162,567 @@ function InternshipsContent() {
     }
   }, [filters, page]);
 
-  useEffect(() => { fetchInternships(); }, [fetchInternships]);
+  useEffect(() => {
+    fetchInternships();
+  }, [fetchInternships]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFilters((f) => ({ ...f, search: searchInput }));
+    setFilters((f) => ({
+      ...f,
+      search: searchInput || undefined,
+      location: locationInput || undefined,
+    }));
+    setPage(1);
+  };
+
+  const selectCategory = (category: string) => {
+    const newVal = selectedCategory === category ? '' : category;
+    setSelectedCategory(newVal);
+    setSearchInput(newVal);
+    setFilters((f) => ({
+      ...f,
+      search: newVal || undefined,
+    }));
     setPage(1);
   };
 
   const updateFilter = (key: keyof InternshipFilters, val: any) => {
-    setFilters((f) => ({ ...f, [key]: val || undefined }));
+    setFilters((f) => ({
+      ...f,
+      [key]: val === '' || val === undefined ? undefined : val,
+    }));
     setPage(1);
   };
 
   const clearFilters = () => {
     setFilters({ sort_by: 'created_at', sort_dir: 'desc' });
     setSearchInput('');
+    setLocationInput('');
+    setSelectedDuration('ALL');
+    setSelectedCategory('');
     setPage(1);
   };
 
+  // Client-side advanced filter for duration_weeks (since backend lacks duration filter)
+  const filteredInternships = useMemo(() => {
+    if (selectedDuration === 'ALL') return internships;
+    
+    return internships.filter((item) => {
+      const weeks = item.duration_weeks || 0;
+      if (selectedDuration === 'SHORT') return weeks <= 8; // Under 2 months
+      if (selectedDuration === 'MEDIUM') return weeks > 8 && weeks <= 16; // 2-4 months
+      if (selectedDuration === 'LONG') return weeks > 16; // 4+ months
+      return true;
+    });
+  }, [internships, selectedDuration]);
+
   const totalPages = Math.ceil(total / PER_PAGE);
+  const isCandidate = user?.role === 'candidate' || !user?.role;
   const canCreate = user?.role === 'hr' || user?.role === 'admin';
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Header */}
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="space-y-8 animate-fade-in font-sans text-slate-800">
+      {/* Header Panel */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-5">
         <div>
-          <Link href="/dashboard" style={{ color: '#a78bfa', textDecoration: 'none', fontSize: '14px' }}>← Dashboard</Link>
-          <h1 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Internship Marketplace
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-outfit text-slate-900">
+            Find Opportunities
           </h1>
-          <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>{total} opportunities available</p>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            Browse through {total} active internship positions on CAPVIA.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {canCreate && (
-            <>
-              <Link href="/internships/manage" style={{ padding: '12px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '14px' }}>
-                ⚙️ Manage
-              </Link>
-              <Link href="/internships/create" style={{ background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', color: '#fff', padding: '12px 24px', borderRadius: '10px', textDecoration: 'none', fontWeight: 700, fontSize: '14px' }}>
-                + Post Internship
-              </Link>
-            </>
-          )}
+        {canCreate && (
+          <div className="flex gap-2">
+            <Link
+              href="/internships/manage"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all"
+            >
+              ⚙️ Manage Roles
+            </Link>
+            <Link
+              href="/internships/create"
+              className="px-4 py-2.5 rounded-xl bg-[#0D47A1] hover:bg-[#0A3B85] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              Post Internship
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* 1. Large Search Hero */}
+      <div className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm relative overflow-hidden">
+        {/* Subtle grid pattern background */}
+        <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+
+        <form onSubmit={handleSearchSubmit} className="relative z-10 flex flex-col lg:flex-row gap-4 items-stretch">
+          <div className="flex-1 flex flex-col md:flex-row gap-3">
+            {/* Role/Company Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search roles, skills, technologies..."
+                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-[#F8FAFC] text-slate-800 text-sm outline-none focus:border-[#0D47A1] focus:ring-1 focus:ring-[#0D47A1] transition-all"
+              />
+            </div>
+
+            {/* Location Input */}
+            <div className="w-full md:w-80 relative">
+              <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <input
+                type="text"
+                value={locationInput}
+                onChange={(e) => setLocationInput(e.target.value)}
+                placeholder="Location (e.g. Bangalore, Remote)"
+                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-[#F8FAFC] text-slate-800 text-sm outline-none focus:border-[#0D47A1] focus:ring-1 focus:ring-[#0D47A1] transition-all"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="px-8 py-3.5 rounded-xl bg-[#0D47A1] hover:bg-[#0A3B85] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
+          >
+            <Search size={16} />
+            Search Jobs
+          </button>
+        </form>
+
+        {/* 2. Popular Categories */}
+        <div className="mt-6 border-t border-slate-100 pt-5 relative z-10">
+          <p className="text-xs font-bold text-slate-450 uppercase tracking-wider mb-3">
+            Popular Categories
+          </p>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1.5 flex-wrap">
+            {POPULAR_CATEGORIES.map((cat) => {
+              const active = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => selectCategory(cat)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all shrink-0 ${
+                    active
+                      ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-350 hover:bg-slate-50'
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 40px', display: 'flex', gap: '28px' }}>
-        {/* Filter Sidebar */}
-        <div style={{ width: '260px', flexShrink: 0 }}>
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '24px', position: 'sticky', top: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>Filters</h3>
-              <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>Clear all</button>
+      {/* Main Grid + Filter Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+        {/* Desktop Sidebar Filters (1 Column) */}
+        <div className="hidden lg:block space-y-6">
+          <div className="bg-white border border-slate-100 rounded-[20px] p-5 shadow-sm space-y-6 sticky top-24">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <Filter size={15} className="text-[#0D47A1]" />
+                Filters
+              </span>
+              <button
+                onClick={clearFilters}
+                className="text-xs font-bold text-[#0D47A1] hover:text-[#0A3B85] transition-colors"
+              >
+                Clear all
+              </button>
             </div>
 
-            <FilterSection title="Work Mode">
-              {WORK_MODES.map((m) => (
-                <FilterChip key={m} label={m} active={filters.work_mode === m} onClick={() => updateFilter('work_mode', filters.work_mode === m ? '' : m)} />
-              ))}
-            </FilterSection>
+            {/* Work Mode */}
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Work Mode</p>
+              <div className="flex flex-col gap-1.5">
+                {WORK_MODES.map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => updateFilter('work_mode', filters.work_mode === m.value ? '' : m.value)}
+                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                      filters.work_mode === m.value
+                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <FilterSection title="Experience">
-              {EXP_LEVELS.map((l) => (
-                <FilterChip key={l} label={l} active={filters.experience_level === l} onClick={() => updateFilter('experience_level', filters.experience_level === l ? '' : l)} />
-              ))}
-            </FilterSection>
+            {/* Experience Level */}
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Experience</p>
+              <div className="flex flex-col gap-1.5">
+                {EXP_LEVELS.map((level) => (
+                  <button
+                    key={level.value}
+                    onClick={() => updateFilter('experience_level', filters.experience_level === level.value ? '' : level.value)}
+                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                      filters.experience_level === level.value
+                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {level.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <FilterSection title="Stipend">
-              <FilterChip label="Paid Only" active={filters.has_stipend === true} onClick={() => updateFilter('has_stipend', filters.has_stipend === true ? undefined : true)} />
-              <FilterChip label="Unpaid" active={filters.has_stipend === false} onClick={() => updateFilter('has_stipend', filters.has_stipend === false ? undefined : false)} />
-            </FilterSection>
+            {/* Stipend Options */}
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Stipend</p>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={() => updateFilter('has_stipend', filters.has_stipend === true ? undefined : true)}
+                  className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                    filters.has_stipend === true
+                      ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                      : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Paid Only
+                </button>
+                <button
+                  onClick={() => updateFilter('has_stipend', filters.has_stipend === false ? undefined : false)}
+                  className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                    filters.has_stipend === false
+                      ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                      : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Unpaid Only
+                </button>
+              </div>
+            </div>
 
-            <FilterSection title="Sort By" last>
-              {SORT_OPTIONS.map((s) => (
-                <FilterChip key={s.value} label={s.label} active={filters.sort_by === s.value} onClick={() => updateFilter('sort_by', s.value)} />
-              ))}
-            </FilterSection>
+            {/* Duration Filters */}
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Duration</p>
+              <div className="flex flex-col gap-1.5">
+                {[
+                  { value: 'ALL', label: 'Any Duration' },
+                  { value: 'SHORT', label: 'Short (≤ 8 weeks)' },
+                  { value: 'MEDIUM', label: 'Medium (8-16 weeks)' },
+                  { value: 'LONG', label: 'Long (16+ weeks)' },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    onClick={() => setSelectedDuration(item.value)}
+                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                      selectedDuration === item.value
+                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sort Options */}
+            <div className="space-y-2.5 pt-2 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Sort By</p>
+              <div className="flex flex-col gap-1.5">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => updateFilter('sort_by', opt.value)}
+                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                      filters.sort_by === opt.value
+                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div style={{ flex: 1 }}>
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
-            <input
-              type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by title, description, location..."
-              style={{ flex: 1, padding: '14px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '15px', outline: 'none' }}
-            />
-            <button type="submit" style={{ padding: '14px 28px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>
-              🔍
-            </button>
-          </form>
-
-          {/* Active filters display */}
-          {(filters.work_mode || filters.experience_level || filters.has_stipend !== undefined || filters.search) && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-              {filters.search && <ActiveFilterTag label={`"${filters.search}"`} onRemove={() => { updateFilter('search', ''); setSearchInput(''); }} />}
-              {filters.work_mode && <ActiveFilterTag label={filters.work_mode} onRemove={() => updateFilter('work_mode', '')} />}
-              {filters.experience_level && <ActiveFilterTag label={filters.experience_level} onRemove={() => updateFilter('experience_level', '')} />}
-              {filters.has_stipend !== undefined && <ActiveFilterTag label={filters.has_stipend ? 'Paid Only' : 'Unpaid'} onRemove={() => updateFilter('has_stipend', undefined)} />}
+        {/* Main Grid Content (3 Columns) */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* Active Filter Tags */}
+          {(filters.work_mode || filters.experience_level || filters.has_stipend !== undefined || filters.search || filters.location || selectedDuration !== 'ALL') && (
+            <div className="flex gap-2 flex-wrap items-center bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1 pr-2">Active:</span>
+              
+              {filters.search && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-bold text-slate-700">
+                  Search: "{filters.search}"
+                  <button onClick={() => { updateFilter('search', ''); setSearchInput(''); setSelectedCategory(''); }} className="text-slate-400 hover:text-slate-700"><X size={12} /></button>
+                </span>
+              )}
+              {filters.location && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-bold text-slate-700">
+                  Near: {filters.location}
+                  <button onClick={() => { updateFilter('location', ''); setLocationInput(''); }} className="text-slate-400 hover:text-slate-700"><X size={12} /></button>
+                </span>
+              )}
+              {filters.work_mode && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-bold text-slate-700">
+                  Mode: {filters.work_mode}
+                  <button onClick={() => updateFilter('work_mode', '')} className="text-slate-400 hover:text-slate-700"><X size={12} /></button>
+                </span>
+              )}
+              {filters.experience_level && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-bold text-slate-700">
+                  Exp: {filters.experience_level}
+                  <button onClick={() => updateFilter('experience_level', '')} className="text-slate-400 hover:text-slate-700"><X size={12} /></button>
+                </span>
+              )}
+              {filters.has_stipend !== undefined && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-bold text-slate-700">
+                  {filters.has_stipend ? 'Paid' : 'Unpaid'}
+                  <button onClick={() => updateFilter('has_stipend', undefined)} className="text-slate-400 hover:text-slate-700"><X size={12} /></button>
+                </span>
+              )}
+              {selectedDuration !== 'ALL' && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-bold text-slate-700">
+                  Duration: {selectedDuration.toLowerCase()}
+                  <button onClick={() => setSelectedDuration('ALL')} className="text-slate-400 hover:text-slate-700"><X size={12} /></button>
+                </span>
+              )}
             </div>
           )}
 
           {error && (
-            <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px', color: '#f87171' }}>{error}</div>
+            <div className="bg-red-50 border border-red-100 text-red-750 text-xs p-4 rounded-xl flex items-center gap-2">
+              <AlertCircle size={16} className="text-red-550 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
 
+          {/* Skeletons Loading State */}
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,0.4)' }}>
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>💼</div>
-              <p>Loading internships...</p>
+            <div className="grid grid-cols-1 gap-5">
+              {[...Array(4)].map((_, idx) => (
+                <div key={idx} className="bg-white border border-slate-100 rounded-3xl p-6 h-52 animate-pulse flex flex-col justify-between">
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-slate-100 rounded-full w-2/3" />
+                      <div className="h-3 bg-slate-50 rounded-full w-1/3" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-slate-50 rounded-full w-full" />
+                    <div className="h-3 bg-slate-50 rounded-full w-4/5" />
+                  </div>
+                  <div className="flex justify-between items-center border-t border-slate-50 pt-4 mt-2">
+                    <div className="h-4 bg-slate-100 rounded-full w-24" />
+                    <div className="h-8 bg-slate-100 rounded-lg w-28" />
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : internships.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>💼</div>
-              <h3 style={{ color: 'rgba(255,255,255,0.7)' }}>No Internships Found</h3>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Try adjusting your search or filters.</p>
-              {canCreate && (
-                <Link href="/internships/create" style={{ display: 'inline-block', marginTop: '20px', background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', color: '#fff', padding: '12px 24px', borderRadius: '10px', textDecoration: 'none', fontWeight: 700 }}>
-                  Post First Internship
-                </Link>
-              )}
+          ) : filteredInternships.length === 0 ? (
+            /* Empty State */
+            <div className="py-20 text-center border border-dashed border-slate-200 rounded-3xl bg-slate-50/50 p-8">
+              <Briefcase size={40} className="mx-auto mb-4 text-slate-350" />
+              <h3 className="font-extrabold text-slate-800 text-base font-outfit">No Internships Found</h3>
+              <p className="text-slate-450 text-xs mt-1 max-w-sm mx-auto">
+                No matching opportunities were found for your search criteria. Adjust your filters or search keywords.
+              </p>
+              <button
+                onClick={clearFilters}
+                className="mt-5 px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl shadow-sm transition"
+              >
+                Reset Filters
+              </button>
             </div>
           ) : (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
-                {internships.map((i) => <InternshipCard key={i.id} internship={i} />)}
-              </div>
+            /* Cards Grid */
+            <div className="grid grid-cols-1 gap-5">
+              <AnimatePresence>
+                {filteredInternships.map((job) => {
+                  const isSaved = savedIds.includes(job.id);
+                  const deadlineDate = job.application_deadline
+                    ? new Date(job.application_deadline).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : null;
 
+                  return (
+                    <motion.div
+                      key={job.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.15 }}
+                      onClick={() => router.push(`/internships/${job.id}`)}
+                      className="bg-white border border-slate-150/70 hover:border-slate-350 rounded-[22px] p-6 hover:shadow-soft transition-all cursor-pointer flex flex-col justify-between gap-4 group"
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Company Logo */}
+                        <div className="flex-shrink-0">
+                          {job.company_logo ? (
+                            <img
+                              src={job.company_logo}
+                              alt={job.company_name}
+                              className="w-12 h-12 rounded-xl object-cover border border-slate-100"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-extrabold text-[#0D47A1] text-lg uppercase">
+                              {(job.company_name || 'C')[0]}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Text Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-4">
+                            <h3 className="text-base font-bold text-slate-900 truncate hover:text-[#0D47A1] transition-colors font-outfit">
+                              {job.title}
+                            </h3>
+                            <button
+                              onClick={(e) => toggleSave(job, e)}
+                              className={`p-2 rounded-lg border transition-all ${
+                                isSaved
+                                  ? 'bg-[#FFC107]/10 border-[#FFC107]/30 text-[#F57F17]'
+                                  : 'bg-slate-50 border-slate-150 text-slate-450 hover:text-slate-700 hover:bg-slate-100'
+                              }`}
+                              aria-label={isSaved ? 'Remove bookmark' : 'Bookmark job'}
+                            >
+                              <Bookmark size={15} fill={isSaved ? 'currentColor' : 'none'} />
+                            </button>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 mt-1 text-xs">
+                            <span className="font-bold text-[#0D47A1] hover:underline">
+                              {job.company_name}
+                            </span>
+                            <span className="text-slate-300">•</span>
+                            <span className="flex items-center gap-1 text-slate-500 font-semibold">
+                              <MapPin size={13} className="text-slate-400" />
+                              {job.location || 'Remote'}
+                            </span>
+                            <span className="text-slate-300">•</span>
+                            <span className="inline-flex items-center gap-1 text-[#0D47A1] font-extrabold bg-blue-50/70 px-2 py-0.5 rounded-md">
+                              {job.work_mode}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Required Skills Row */}
+                      {job.required_skills && job.required_skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {job.required_skills.slice(0, 4).map((skill) => (
+                            <span
+                              key={skill}
+                              className="px-2.5 py-1 text-[10px] font-bold bg-slate-50 border border-slate-150/50 text-slate-600 rounded-md"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {job.required_skills.length > 4 && (
+                            <span className="text-[10px] text-slate-450 font-semibold px-1 py-0.5">
+                              +{job.required_skills.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Card Footer Details */}
+                      <div className="flex flex-wrap justify-between items-center gap-4 pt-4 border-t border-slate-100 mt-2">
+                        {/* Stipend and Duration info */}
+                        <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
+                          {job.stipend_min ? (
+                            <span className="flex items-center gap-1 text-emerald-650 font-bold">
+                              <DollarSign size={14} className="text-emerald-500" />
+                              {job.stipend_currency} {job.stipend_min.toLocaleString()}
+                              {job.stipend_max ? ` - ${job.stipend_max.toLocaleString()}` : ''}/mo
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Unpaid Internship</span>
+                          )}
+                          <span className="text-slate-200">|</span>
+                          <span className="flex items-center gap-1">
+                            <Clock size={13} className="text-slate-400" />
+                            {job.duration_weeks ? `${job.duration_weeks} weeks` : 'Duration TBD'}
+                          </span>
+                        </div>
+
+                        {/* Interactive Buttons */}
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Link
+                            href={`/internships/${job.id}`}
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-[#0D47A1] hover:bg-blue-50 transition-colors"
+                          >
+                            View Details
+                          </Link>
+                          {isCandidate && (
+                            <div className="w-36 shrink-0">
+                              <ApplyButton
+                                internshipId={job.id}
+                                internshipTitle={job.title}
+                                isDeadlinePassed={job.is_deadline_passed}
+                                onSuccess={(appId) => router.push(`/applications/${appId}`)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Applicants & Posted stats */}
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold mt-1">
+                        <div className="flex items-center gap-3">
+                          <span>📨 {job.application_count} Applicants</span>
+                          <span>👁 {job.view_count} Views</span>
+                        </div>
+                        {deadlineDate && (
+                          <span className={job.is_deadline_passed ? 'text-red-550' : 'text-slate-400'}>
+                            {job.is_deadline_passed ? 'Expired' : `Deadline: ${deadlineDate}`}
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+
+              {/* Pagination controls */}
               {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
-                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', background: page === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)', color: page === 1 ? 'rgba(255,255,255,0.3)' : '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight: 600 }}>← Prev</button>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', padding: '0 12px' }}>Page {page} of {totalPages}</span>
-                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', background: page === totalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)', color: page === totalPages ? 'rgba(255,255,255,0.3)' : '#fff', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight: 600 }}>Next →</button>
+                <div className="flex justify-center items-center gap-3 pt-6 border-t border-slate-100 mt-8">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="px-4 py-2 rounded-xl border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    ← Previous
+                  </button>
+                  <span className="text-xs font-bold text-slate-500">
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="px-4 py-2 rounded-xl border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Next →
+                  </button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-function InternshipCard({ internship: i }: { internship: Internship }) {
-  const statusColors: Record<string, string> = {
-    PUBLISHED: '#4ade80', DRAFT: '#f59e0b', CLOSED: '#94a3b8', ARCHIVED: '#6b7280'
-  };
-
-  return (
-    <Link href={`/internships/${i.id}`} style={{ textDecoration: 'none' }}>
-      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '24px', cursor: 'pointer', transition: 'all 0.2s ease' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(167,139,250,0.35)'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-          {/* Company Logo */}
-          <div style={{ flexShrink: 0 }}>
-            {i.company_logo ? (
-              <img src={i.company_logo} alt={i.company_name || ''} style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} />
-            ) : (
-              <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'linear-gradient(135deg, #a78bfa22, #60a5fa22)', border: '1px solid rgba(167,139,250,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 800, color: '#a78bfa' }}>
-                {(i.company_name || 'C')[0]}
-              </div>
-            )}
-          </div>
-
-          {/* Content */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#fff' }}>{i.title}</h3>
-              <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', background: `${statusColors[i.status]}18`, color: statusColors[i.status], border: `1px solid ${statusColors[i.status]}30`, letterSpacing: '0.5px', flexShrink: 0 }}>
-                {i.status}
-              </span>
-            </div>
-
-            <p style={{ margin: '4px 0 10px', fontSize: '13px', color: '#a78bfa', fontWeight: 600 }}>{i.company_name}</p>
-
-            {/* Tags Row */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-              <Tag icon="🌐" label={i.work_mode} color="#60a5fa" />
-              {i.location && <Tag icon="📍" label={i.location} color="rgba(255,255,255,0.5)" />}
-              <Tag icon="📅" label={`${i.duration_weeks ? `${i.duration_weeks} weeks` : 'Duration TBD'}`} color="rgba(255,255,255,0.5)" />
-              <Tag icon="🎓" label={i.experience_level} color="#f59e0b" />
-              <Tag icon="👥" label={`${i.openings} opening${i.openings !== 1 ? 's' : ''}`} color="rgba(255,255,255,0.5)" />
-            </div>
-
-            {/* Skills */}
-            {i.required_skills?.length > 0 && (
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                {i.required_skills.slice(0, 5).map((s) => (
-                  <span key={s} style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.2)', color: '#c4b5fd' }}>{s}</span>
-                ))}
-                {i.required_skills.length > 5 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>+{i.required_skills.length - 5} more</span>}
-              </div>
-            )}
-
-            {/* Footer Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px' }}>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                {(i.stipend_min || i.stipend_max) ? (
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#4ade80' }}>
-                    💰 {i.stipend_min ? `${i.stipend_currency} ${i.stipend_min.toLocaleString()}` : ''}{i.stipend_min && i.stipend_max ? ' - ' : ''}{i.stipend_max ? `${i.stipend_max.toLocaleString()}` : ''}/mo
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>Stipend not specified</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
-                <span>👁 {i.view_count}</span>
-                <span>📨 {i.application_count}</span>
-                {i.application_deadline && (
-                  <span style={{ color: i.is_deadline_passed ? '#f87171' : 'rgba(255,255,255,0.4)' }}>
-                    {i.is_deadline_passed ? '⚠️ Deadline passed' : `⏰ ${i.application_deadline}`}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function Tag({ icon, label, color }: { icon: string; label: string; color: string }) {
-  return (
-    <span style={{ fontSize: '12px', color, display: 'flex', alignItems: 'center', gap: '4px' }}>
-      {icon} {label}
-    </span>
-  );
-}
-
-function FilterSection({ title, children, last = false }: { title: string; children: React.ReactNode; last?: boolean }) {
-  return (
-    <div style={{ marginBottom: last ? 0 : '20px', paddingBottom: last ? 0 : '20px', borderBottom: last ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
-      <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.8px' }}>{title}</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{children}</div>
-    </div>
-  );
-}
-
-function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ padding: '8px 12px', borderRadius: '8px', border: `1px solid ${active ? 'rgba(167,139,250,0.5)' : 'rgba(255,255,255,0.08)'}`, background: active ? 'rgba(167,139,250,0.15)' : 'transparent', color: active ? '#a78bfa' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '13px', fontWeight: active ? 700 : 400, textAlign: 'left', transition: 'all 0.15s ease' }}>
-      {label}
-    </button>
-  );
-}
-
-function ActiveFilterTag({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '20px', background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.3)', fontSize: '12px', color: '#a78bfa', fontWeight: 600 }}>
-      {label}
-      <button onClick={onRemove} style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', padding: 0, fontSize: '14px', lineHeight: 1, marginLeft: '2px' }}>×</button>
-    </span>
   );
 }

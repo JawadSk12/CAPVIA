@@ -49,10 +49,17 @@ export class SessionPersistenceService {
     try {
       const existing = this.loadAllSessions();
       const filtered = existing.filter(s => s.id !== session.id);
-      localStorage.setItem(SESSIONS_KEY, JSON.stringify([...filtered, session]));
+      try {
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify([...filtered, session]));
+      } catch (quotaError) {
+        console.warn('[SessionPersistence] Storage quota exceeded. Saving session without video recording.');
+        const sessionWithoutVideo = { ...session, videoBase64: null };
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify([...filtered, sessionWithoutVideo]));
+      }
       sessionStorage.setItem(CURRENT_SESSION_KEY, session.id);
     } catch (e) {
       console.error('[SessionPersistence] Failed to save:', e);
+      sessionStorage.setItem(CURRENT_SESSION_KEY, session.id);
     }
   }
 

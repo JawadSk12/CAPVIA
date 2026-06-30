@@ -12,7 +12,7 @@ from capvia_platform.services.services import MappingService, RecruitmentProgres
 from capvia_platform.repositories.application_repository import ApplicationEventRepository
 from capvia_platform.services.application_service import ApplicationService
 
-logger = logging.getLogger("ats_webhooks")
+from capvia_platform.core.logger import logger
 ats_repo = ATSRepository()
 event_repo = ApplicationEventRepository()
 

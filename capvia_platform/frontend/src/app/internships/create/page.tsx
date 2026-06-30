@@ -53,11 +53,19 @@ function CreateInternshipContent() {
   const [step, setStep] = useState<Step>(1);
   const [data, setData] = useState<WizardData>(defaultData);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [createNewCompany, setCreateNewCompany] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    companyApi.listMine().then((res: any) => setCompanies(res.companies || [])).catch(() => {});
+    companyApi.listMine().then((res: any) => {
+      const list = res.companies || [];
+      setCompanies(list);
+      if (list.length === 0) {
+        setCreateNewCompany(true);
+      }
+    }).catch(() => {});
   }, []);
 
   const update = (field: keyof WizardData, val: any) => setData((d) => ({ ...d, [field]: val }));
@@ -75,8 +83,17 @@ function CreateInternshipContent() {
     setIsSubmitting(true);
     setError(null);
     try {
+      let companyId = data.company_id;
+      if (createNewCompany) {
+        if (!newCompanyName.trim()) {
+          throw new Error('Company name is required.');
+        }
+        const createdCompany = await companyApi.create({ name: newCompanyName.trim() });
+        companyId = createdCompany.id;
+      }
+
       const payload = {
-        company_id: data.company_id,
+        company_id: companyId,
         title: data.title,
         description: data.description || undefined,
         responsibilities: data.responsibilities,
@@ -97,7 +114,7 @@ function CreateInternshipContent() {
       const result = await internshipApi.create(payload);
       router.push(`/internships/${result.id}`);
     } catch (e: any) {
-      setError(e?.response?.data?.error?.message || 'Failed to create internship.');
+      setError(e?.response?.data?.error?.message || e.message || 'Failed to create internship.');
     } finally {
       setIsSubmitting(false);
     }
@@ -139,11 +156,51 @@ function CreateInternshipContent() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
               <h2 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 700 }}>Basic Information</h2>
               <div>
-                <label style={labelStyle}>COMPANY *</label>
-                <select value={data.company_id} onChange={(e) => update('company_id', e.target.value)} style={inputStyle}>
-                  <option value="">Select your company</option>
-                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                {createNewCompany ? (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={labelStyle}>COMPANY NAME *</label>
+                      {companies.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setCreateNewCompany(false)}
+                          style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}
+                        >
+                          Select existing company
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={newCompanyName}
+                      onChange={(e) => setNewCompanyName(e.target.value)}
+                      placeholder="e.g. Acme Corporation"
+                      style={inputStyle}
+                    />
+                    {companies.length === 0 && (
+                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: '1.5' }}>
+                        💡 You don't have any registered companies yet. A new company profile will be created automatically when you submit.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={labelStyle}>COMPANY *</label>
+                      <button
+                        type="button"
+                        onClick={() => setCreateNewCompany(true)}
+                        style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}
+                      >
+                        + Register new company
+                      </button>
+                    </div>
+                    <select value={data.company_id} onChange={(e) => update('company_id', e.target.value)} style={inputStyle}>
+                      <option value="">Select your company</option>
+                      {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
               <div>
                 <label style={labelStyle}>INTERNSHIP TITLE *</label>
@@ -253,7 +310,23 @@ function CreateInternshipContent() {
           ) : <div />}
           {step < 3 ? (
             <button onClick={() => {
-              if (step === 1 && (!data.company_id || !data.title.trim())) { setError('Company and title are required.'); return; }
+              if (step === 1) {
+                if (createNewCompany) {
+                  if (!newCompanyName.trim()) {
+                    setError('Company name is required.');
+                    return;
+                  }
+                } else {
+                  if (!data.company_id) {
+                    setError('Company selection is required.');
+                    return;
+                  }
+                }
+                if (!data.title.trim()) {
+                  setError('Internship title is required.');
+                  return;
+                }
+              }
               setError(null);
               setStep((s) => (s + 1) as Step);
             }} style={{ padding: '13px 28px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '14px' }}>

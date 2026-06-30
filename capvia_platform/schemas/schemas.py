@@ -208,6 +208,9 @@ class UserRegisterRequest(BaseModel):
     password: str = Field(..., min_length=8)
     full_name: str
     role: Optional[str] = "candidate"
+    company_name: Optional[str] = None
+    phone: Optional[str] = None
+
 
 class UserLoginRequest(BaseModel):
     email: EmailStr

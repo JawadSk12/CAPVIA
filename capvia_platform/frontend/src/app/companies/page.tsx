@@ -6,11 +6,28 @@ import { companyApi } from '../../services/api';
 import { Company } from '../../types';
 import { useAuthStore } from '../../store/auth';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Building,
+  Users,
+  CheckCircle,
+  Plus,
+  ArrowRight,
+  TrendingUp,
+  Inbox,
+  AlertCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CompaniesPage() {
   return (
-    <ProtectedRoute>
-      <CompaniesContent />
+    <ProtectedRoute allowedRoles={['candidate', 'hr', 'admin']}>
+      <UnifiedLayout title="Organizations">
+        <CompaniesContent />
+      </UnifiedLayout>
     </ProtectedRoute>
   );
 }
@@ -24,7 +41,8 @@ function CompaniesContent() {
   const [searchInput, setSearchInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const PER_PAGE = 20;
+
+  const PER_PAGE = 12;
 
   const fetchCompanies = useCallback(async () => {
     setIsLoading(true);
@@ -40,7 +58,9 @@ function CompaniesContent() {
     }
   }, [page, search]);
 
-  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,158 +72,248 @@ function CompaniesContent() {
   const canCreate = user?.role === 'hr' || user?.role === 'admin';
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)', color: '#fff', padding: '0' }}>
+    <div className="space-y-8 animate-fade-in font-sans text-slate-800">
       {/* Header */}
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-5">
         <div>
-          <Link href="/dashboard" style={{ color: '#a78bfa', textDecoration: 'none', fontSize: '14px' }}>← Dashboard</Link>
-          <h1 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 800, background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Companies
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-outfit text-slate-900">
+            Explore Organizations
           </h1>
-          <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>{total} organization{total !== 1 ? 's' : ''} on CAPVIA</p>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            Browse through {total} company profile{total !== 1 ? 's' : ''} offering internships.
+          </p>
         </div>
         {canCreate && (
-          <Link href="/companies/create" style={{ background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', color: '#fff', padding: '12px 24px', borderRadius: '10px', textDecoration: 'none', fontWeight: 700, fontSize: '14px', letterSpacing: '0.5px' }}>
-            + Create Company
+          <Link
+            href="/companies/create"
+            className="px-4 py-2.5 rounded-xl bg-[#0D47A1] hover:bg-[#0A3B85] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+          >
+            <Plus size={14} />
+            Create Company
           </Link>
         )}
       </div>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 40px' }}>
-        {/* Search */}
-        <form onSubmit={handleSearch} style={{ marginBottom: '32px', display: 'flex', gap: '12px' }}>
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search companies by name..."
-            style={{ flex: 1, padding: '14px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '15px', outline: 'none' }}
-          />
-          <button type="submit" style={{ padding: '14px 28px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '15px' }}>
+      {/* Search bar Hero */}
+      <div className="bg-white border border-slate-100 rounded-[20px] p-5 shadow-sm">
+        <form onSubmit={handleSearch} className="flex gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-4 top-3 h-5 w-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search companies by name or industry..."
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 bg-[#F8FAFC] text-slate-800 text-sm outline-none focus:border-[#0D47A1] transition-all"
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-6 py-3 rounded-xl bg-[#0D47A1] hover:bg-[#0A3B85] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+          >
             Search
           </button>
           {search && (
-            <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }} style={{ padding: '14px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setSearchInput('');
+                setPage(1);
+              }}
+              className="px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold transition-colors"
+            >
               Clear
             </button>
           )}
         </form>
+      </div>
 
-        {/* Error */}
-        {error && (
-          <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '16px 20px', marginBottom: '24px', color: '#f87171' }}>
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="bg-red-50 border border-red-100 text-red-750 text-xs p-4 rounded-xl flex items-center gap-2">
+          <AlertCircle size={16} className="text-red-550 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
-        {/* Loading */}
-        {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,0.4)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '16px' }}>🏢</div>
-            <p>Loading companies...</p>
-          </div>
-        ) : companies.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏢</div>
-            <h3 style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>No Companies Found</h3>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-              {search ? `No companies match "${search}".` : 'Be the first to create a company on CAPVIA.'}
-            </p>
-            {canCreate && !search && (
-              <Link href="/companies/create" style={{ display: 'inline-block', marginTop: '20px', background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', color: '#fff', padding: '12px 24px', borderRadius: '10px', textDecoration: 'none', fontWeight: 700 }}>
-                Create First Company
-              </Link>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-              {companies.map((company) => (
-                <CompanyCard key={company.id} company={company} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center' }}>
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', background: page === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)', color: page === 1 ? 'rgba(255,255,255,0.3)' : '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-                  ← Prev
-                </button>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', padding: '0 12px' }}>Page {page} of {totalPages}</span>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', background: page === totalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)', color: page === totalPages ? 'rgba(255,255,255,0.3)' : '#fff', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-                  Next →
-                </button>
+      {/* Loading Skeletons */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, idx) => (
+            <div key={idx} className="bg-white border border-slate-100 rounded-3xl p-6 h-52 animate-pulse flex flex-col justify-between">
+              <div className="flex gap-4">
+                <div className="w-12 h-12 bg-slate-100 rounded-xl flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-slate-100 rounded-full w-2/3" />
+                  <div className="h-3 bg-slate-50 rounded-full w-1/3" />
+                </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+              <div className="h-3 bg-slate-50 rounded-full w-full" />
+              <div className="flex gap-4 pt-4 border-t border-slate-50">
+                <div className="h-4 bg-slate-100 rounded-full w-12" />
+                <div className="h-4 bg-slate-100 rounded-full w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : companies.length === 0 ? (
+        /* Empty State */
+        <div className="py-20 text-center border border-dashed border-slate-200 rounded-3xl bg-slate-50/50 p-8">
+          <Building size={40} className="mx-auto mb-4 text-slate-350" />
+          <h3 className="font-extrabold text-slate-800 text-base font-outfit">No Organizations Found</h3>
+          <p className="text-slate-450 text-xs mt-1 max-w-sm mx-auto leading-relaxed">
+            {search
+              ? `No companies match your query "${search}". Try searching for another name.`
+              : 'Be the first to register an organization profile on CAPVIA.'}
+          </p>
+          {canCreate && !search && (
+            <Link
+              href="/companies/create"
+              className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#0D47A1] hover:bg-[#0A3B85] text-white font-bold text-xs rounded-xl shadow-sm transition"
+            >
+              Create Company Profile
+              <Plus size={14} />
+            </Link>
+          )}
+        </div>
+      ) : (
+        /* Grid */
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence>
+              {companies.map((company) => (
+                <motion.div
+                  key={company.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.15 }}
+                  className="bg-white border border-slate-150/70 hover:border-slate-300 rounded-[22px] p-6 hover:shadow-soft transition-all flex flex-col justify-between gap-4 relative overflow-hidden group"
+                >
+                  {/* Verified Badge */}
+                  {company.is_verified && (
+                    <div className="absolute top-5 right-5 inline-flex items-center gap-1 text-[9px] font-extrabold bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                      <CheckCircle size={10} className="text-emerald-600" />
+                      Verified
+                    </div>
+                  )}
 
-function CompanyCard({ company }: { company: Company }) {
-  return (
-    <Link href={`/companies/${company.id}`} style={{ textDecoration: 'none' }}>
-      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '24px', cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative', overflow: 'hidden' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(167,139,250,0.4)'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
-      >
-        {/* Verified badge */}
-        {company.is_verified && (
-          <div style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, color: '#4ade80', letterSpacing: '0.5px' }}>
-            ✓ VERIFIED
+                  <div className="space-y-4">
+                    {/* Logo + Name */}
+                    <div className="flex items-center gap-3 pr-16">
+                      {company.logo_url ? (
+                        <img
+                          src={company.logo_url}
+                          alt={company.name}
+                          className="w-12 h-12 rounded-xl object-cover border border-slate-100 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-extrabold text-[#0D47A1] text-lg uppercase flex-shrink-0">
+                          {company.name[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0D47A1] transition-colors truncate font-outfit">
+                          {company.name}
+                        </h3>
+                        {company.industry && (
+                          <p className="text-[10px] text-[#0D47A1] font-bold tracking-wide uppercase mt-0.5">
+                            {company.industry}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    {company.description && (
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed line-clamp-2">
+                        {company.description}
+                      </p>
+                    )}
+
+                    {/* Metadata chips */}
+                    <div className="flex flex-wrap gap-y-1 gap-x-3 text-[10px] font-semibold text-slate-450">
+                      {company.headquarters && (
+                        <span className="flex items-center gap-1">
+                          <MapPin size={12} className="text-slate-400" />
+                          {company.headquarters}
+                        </span>
+                      )}
+                      {company.employee_count && (
+                        <span className="flex items-center gap-1">
+                          <Users size={12} className="text-slate-400" />
+                          {company.employee_count} Employees
+                        </span>
+                      )}
+                      {company.founded_year && (
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} className="text-slate-400" />
+                          Est. {company.founded_year}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Footer: Metrics and Link */}
+                  <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-2">
+                    <div className="flex gap-4 text-center">
+                      <div>
+                        <div className="text-sm font-black text-slate-800 font-outfit">
+                          {company.internship_count}
+                        </div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                          Roles
+                        </div>
+                      </div>
+                      <div className="w-px bg-slate-100" />
+                      <div>
+                        <div className="text-sm font-black text-slate-800 font-outfit">
+                          {company.member_count}
+                        </div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                          Team
+                        </div>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/companies/${company.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-[#0D47A1] group-hover:translate-x-0.5 transition-transform"
+                    >
+                      View Profile
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
-        )}
 
-        {/* Logo + Name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          {company.logo_url ? (
-            <img src={company.logo_url} alt={company.name} style={{ width: '52px', height: '52px', borderRadius: '12px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} />
-          ) : (
-            <div style={{ width: '52px', height: '52px', borderRadius: '12px', background: 'linear-gradient(135deg, #a78bfa22, #60a5fa22)', border: '1px solid rgba(167,139,250,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 800, color: '#a78bfa' }}>
-              {company.name[0].toUpperCase()}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-3 pt-4">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 rounded-xl border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                ← Previous
+              </button>
+              <span className="text-xs font-bold text-slate-500">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-4 py-2 rounded-xl border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Next →
+              </button>
             </div>
           )}
-          <div>
-            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#fff' }}>{company.name}</h3>
-            {company.industry && <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#a78bfa', fontWeight: 600 }}>{company.industry}</p>}
-          </div>
         </div>
-
-        {/* Description */}
-        {company.description && (
-          <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {company.description}
-          </p>
-        )}
-
-        {/* Meta */}
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          {company.headquarters && (
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>📍 {company.headquarters}</span>
-          )}
-          {company.employee_count && (
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>👥 {company.employee_count}</span>
-          )}
-          {company.founded_year && (
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>📅 Est. {company.founded_year}</span>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: '16px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#60a5fa' }}>{company.internship_count}</div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>Internships</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#a78bfa' }}>{company.member_count}</div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>Team Members</div>
-          </div>
-        </div>
-      </div>
-    </Link>
+      )}
+    </div>
   );
 }

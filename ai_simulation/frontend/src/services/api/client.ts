@@ -7,8 +7,9 @@ class ApiClient {
     private client: AxiosInstance;
 
     constructor() {
+        const baseRoute = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL : `${API_BASE_URL}/api/v1`;
         this.client = axios.create({
-            baseURL: `${API_BASE_URL}/api/v1`,
+            baseURL: baseRoute,
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -46,8 +47,9 @@ class ApiClient {
                         // Try to refresh token
                         const refreshToken = localStorage.getItem('refresh_token');
                         if (refreshToken) {
+                            const refreshBase = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL : `${API_BASE_URL}/api/v1`;
                             const response = await axios.post(
-                                `${API_BASE_URL}/api/v1/auth/refresh`,
+                                `${refreshBase}/auth/refresh`,
                                 { refresh_token: refreshToken }
                             );
 

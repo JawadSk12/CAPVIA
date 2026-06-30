@@ -5,6 +5,9 @@ const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
   swcMinify: true,
+  experimental: {
+    esmExternals: "loose",
+  },
 };
 
 export default withSentryConfig(nextConfig, {

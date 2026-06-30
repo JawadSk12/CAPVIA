@@ -28,26 +28,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('integrity_results', sa.Column('integrity_score', sa.Integer(), nullable=True))
-    op.add_column('integrity_results', sa.Column('ai_dependency_score', sa.Numeric(5, 4), nullable=True))
-    op.add_column('integrity_results', sa.Column('trust_index', sa.Integer(), nullable=True))
-    op.add_column('integrity_results', sa.Column('compiled_risk_level', sa.String(20), nullable=True))
-    op.add_column('integrity_results', sa.Column('confidence_level', sa.Numeric(5, 4), nullable=True))
-    op.add_column('integrity_results', sa.Column('explainability', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    op.add_column('integrity_results', sa.Column('scoring_formula', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    op.add_column('integrity_results', sa.Column('calibration_logic', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    op.add_column('integrity_results', sa.Column('audit_trail', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    op.add_column('integrity_results', sa.Column('historical_tracking', postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column('integrity_results', 'historical_tracking')
-    op.drop_column('integrity_results', 'audit_trail')
-    op.drop_column('integrity_results', 'calibration_logic')
-    op.drop_column('integrity_results', 'scoring_formula')
-    op.drop_column('integrity_results', 'explainability')
-    op.drop_column('integrity_results', 'confidence_level')
-    op.drop_column('integrity_results', 'compiled_risk_level')
-    op.drop_column('integrity_results', 'trust_index')
-    op.drop_column('integrity_results', 'ai_dependency_score')
-    op.drop_column('integrity_results', 'integrity_score')
+    pass

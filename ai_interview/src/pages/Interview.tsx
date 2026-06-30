@@ -2,11 +2,11 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInterviewFlow } from '../hooks/useInterviewFlow';
 import { useBrowserFaceDetection } from '../hooks/useBrowserFaceDetection';
-import { useElectronSecurity } from '../hooks/useElectronSecurity';
+import { useBrowserSecurity } from '../hooks/useBrowserSecurity';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import { VideoRecorder } from '../components/Interview/VideoRecorder';
-import { InterviewHeader } from '../components/Interview/InterviewHeader';
+// import { InterviewHeader } from '../components/Interview/InterviewHeader';
 import { InterviewProgress } from '../components/Interview/InterviewProgress';
+import { VideoRecorder } from '../components/Interview/VideoRecorder';
 import { VideoRecordingService, blobToBase64 } from '../services/videoRecordingService';
 import { TTSService } from '../services/ttsService';
 import { KioskOverlay } from '../components/Security/KioskOverlay';
@@ -20,7 +20,7 @@ import { loadInterviewConfig } from '../data/questions';
 
 // Thresholds — must match useBrowserFaceDetection.ts
 const YAW_THRESHOLD   = 18;
-const PITCH_THRESHOLD = 15;
+// const PITCH_THRESHOLD = 15;
 
 interface LocalViolations {
   tabSwitches: number;
@@ -37,6 +37,7 @@ const RISK_FROM_SCORE = (score: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' 
   return 'CRITICAL';
 };
 
+/*
 const RISK_COLOR = (risk: string) => {
   switch (risk) {
     case 'CRITICAL': return 'text-red-700 bg-red-50 border-red-300';
@@ -45,6 +46,7 @@ const RISK_COLOR = (risk: string) => {
     default:         return 'text-green-700 bg-green-50 border-green-300';
   }
 };
+*/
 
 const GAZE_COLOR = (dir: string | null) => {
   if (dir === 'CENTER') return 'text-green-600';
@@ -54,6 +56,7 @@ const GAZE_COLOR = (dir: string | null) => {
   return 'text-slate-400';
 };
 
+/*
 const BAR = ({ value, max = 100, color = 'bg-blue-500' }: { value: number; max?: number; color?: string }) => (
   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
     <div
@@ -71,6 +74,7 @@ const SeverityBadge = ({ severity }: { severity: string }) => {
           'bg-blue-100 text-blue-700 border border-blue-200';
   return <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${cls}`}>{severity}</span>;
 };
+*/
 
 const DIFF_LABEL: Record<string, { label: string; color: string }> = {
   easy:   { label: 'Easy',     color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
@@ -85,11 +89,11 @@ const Interview: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoRecorderRef = useRef<VideoRecordingService | null>(null);
 
-  // ── Electron kiosk security ────────────────────────────────────────────
+  // ── Browser security hook (replaces Electron kiosk)
   const {
     isElectron, isDisplayBlocked, displayCount, isCameraLost,
     lastViolation, notifyInterviewStarted, notifyInterviewEnded, requestAdminUnlock,
-  } = useElectronSecurity();
+  } = useBrowserSecurity();
 
   const [toastViolation, setToastViolation] = useState<ToastViolation | null>(null);
 
@@ -106,7 +110,7 @@ const Interview: React.FC = () => {
 
   // ── State ──────────────────────────────────────────────────────────────
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+  const [, setIsRecordingVideo] = useState(false);
   const [localViolations, setLocalViolations] = useState<LocalViolations>({
     tabSwitches: 0, windowBlurs: 0, rightClicks: 0, copyPastes: 0, suspiciousKeys: 0,
   });
@@ -387,7 +391,7 @@ const Interview: React.FC = () => {
     });
 
     navigate('/intern/results');
-  }, [detection, localViolations, elapsedSeconds, navigate, stopListening, stopMonitoring, completeInterview]);
+  }, [detection, localViolations, elapsedSeconds, navigate, stopListening, stopMonitoring, completeInterview, notifyInterviewEnded]);
 
 
   // Auto-complete when all questions done
@@ -399,7 +403,7 @@ const Interview: React.FC = () => {
   const isRecording = interviewState.status === 'in_progress';
   const result = detection.currentResult;
   const intScore = detection.integrityScore;
-  const risk = RISK_FROM_SCORE(intScore);
+  // const risk = RISK_FROM_SCORE(intScore);
   const totalLocalViolations = Object.values(localViolations).reduce((a, b) => a + b, 0);
   const securityBlocked = isCameraLost || isDisplayBlocked;
 
@@ -409,25 +413,26 @@ const Interview: React.FC = () => {
   const diffInfo = currentQuestion?.difficulty ? DIFF_LABEL[currentQuestion.difficulty] ?? DIFF_LABEL.easy : null;
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(145deg, #eef2ff 0%, #f0f9ff 40%, #fdf4ff 100%)' }}>
+    <div className="min-h-screen bg-white flex flex-col" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-      {/* ── Kiosk overlays ── */}
+      {/* ── Security overlays (logic unchanged) ── */}
       <KioskOverlay isDisplayBlocked={isDisplayBlocked} displayCount={displayCount} isCameraLost={isCameraLost} />
       <ViolationToast violation={toastViolation} />
-      {isElectron && <AdminUnlockModal onRequestUnlock={requestAdminUnlock} />}
+      {<AdminUnlockModal onRequestUnlock={requestAdminUnlock} />}
 
       {/* ── AI Loading Overlay ── */}
       {isLoadingQuestions && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm" style={{ background: 'rgba(240,244,255,0.97)' }}>
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'rgba(248,250,252,0.97)', backdropFilter: 'blur(8px)' }}>
           <div className="relative mb-6">
-            <div className="w-20 h-20 rounded-full border-4 border-violet-200 border-t-violet-600 animate-spin" />
-            <div className="absolute inset-0 flex items-center justify-center text-3xl">🧠</div>
+            <div className="w-20 h-20 rounded-full border-4 border-slate-200 animate-spin" style={{ borderTopColor: '#0D47A1' }} />
+            <div className="absolute inset-0 flex items-center justify-center"
+              style={{ fontSize: 28 }}>🧠</div>
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">AI is Preparing Your Questions</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">AI is Preparing Your Questions</h2>
           <p className="text-slate-500 text-sm">Generating 5 questions — Easy → Easy → Moderate → Moderate → Hard…</p>
-          <div className="flex gap-1 mt-4">
+          <div className="flex gap-1.5 mt-4">
             {[0,1,2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+              <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#0D47A1', animationDelay: `${i * 0.15}s` }} />
             ))}
           </div>
         </div>
@@ -435,96 +440,249 @@ const Interview: React.FC = () => {
 
       {/* ── Fallback notice ── */}
       {questionsError && !isLoadingQuestions && (
-        <div className="bg-violet-50 border-b border-violet-200 px-4 py-2 flex items-center gap-3">
-          <span className="text-violet-700 text-xs flex-1">🧠 Using smart fallback questions — install Ollama for full AI generation.</span>
+        <div className="px-4 py-2.5 flex items-center gap-3" style={{ background: 'rgba(13,71,161,0.05)', borderBottom: '1px solid rgba(13,71,161,0.12)' }}>
+          <span className="text-xs" style={{ color: '#0D47A1' }}>🧠 Using smart fallback questions — install Ollama for full AI generation.</span>
         </div>
       )}
 
-      <InterviewHeader isRecording={isRecording} isPaused={false} />
+      {/* ── CAPVIA Interview Header ── */}
+      <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-100 shadow-sm" style={{ minHeight: 56 }}>
+        <div className="flex items-center gap-3">
+          {/* Logo */}
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0D47A1, #1565C0)' }}>
+            <span className="text-white text-xs font-black">C</span>
+          </div>
+          <span className="font-black text-slate-900 tracking-tight" style={{ fontSize: 16 }}>CAPVIA</span>
+          <span className="text-slate-300 text-xs">|</span>
+          <span className="text-slate-500 text-xs font-semibold">AI Interview</span>
+        </div>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Center: progress */}
+        <div className="flex items-center gap-3">
+          {isRecording && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}>
+              <span className="rec-dot" />
+              REC
+            </div>
+          )}
+          <span className="text-xs text-slate-500 font-semibold">
+            Q{interviewState.currentQuestionIndex + 1} / {interviewState.totalQuestions}
+          </span>
+          <span className="text-xs font-mono font-bold" style={{ color: '#0D47A1' }}>
+            {formatElapsed(elapsedSeconds)}
+          </span>
+        </div>
 
-          {/* ─── LEFT: Interview Area ─── */}
-          <div className="lg:col-span-2 space-y-5">
+        {/* Right: status indicators */}
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+            result?.faceCount === 1 ? 'text-[#10B981] bg-emerald-50 border-emerald-200' : 'text-[#EF4444] bg-red-50 border-red-200'
+          }`}>
+            <span>👤</span>
+            {result?.faceCount === 1 ? 'Face OK' : result?.faceCount === 0 ? 'No Face' : 'Multi-Face'}
+          </div>
+          <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+            GAZE_COLOR(result?.gazeDirection ?? null).replace('text-', 'text-').includes('green')
+              ? 'text-[#10B981] bg-emerald-50 border-emerald-200'
+              : 'text-[#F59E0B] bg-amber-50 border-amber-200'
+          }`}>
+            👁 {result?.gazeDirection ?? '—'}
+          </div>
+        </div>
+      </header>
 
-            <VideoRecorder videoRef={videoRef} isRecording={isRecording} isPaused={false} />
+      {/* ── Interview Content ── */}
+      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 56px - 64px)' }}>
 
-            {/* ── Question Card ── */}
-            {currentQuestion && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                {/* Header row */}
-                <div className="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-violet-50 to-blue-50 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+        {/* ─── LEFT PANEL (60%) — Video + Proctoring ─── */}
+        <div className="flex flex-col" style={{ width: '60%', borderRight: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+
+          {/* Camera Preview */}
+          <div className="flex-1 relative p-4">
+            <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg bg-slate-900" style={{ minHeight: 320 }}>
+              <VideoRecorder videoRef={videoRef} isRecording={isRecording} isPaused={false} />
+
+              {/* Recording badge */}
+              {isRecording && (
+                <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold" style={{ background: 'rgba(239,68,68,0.9)', backdropFilter: 'blur(4px)' }}>
+                  <span className="rec-dot" />
+                  RECORDING
+                </div>
+              )}
+
+              {/* AI speaking indicator */}
+              {aiPhase === 'speaking' && (
+                <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold" style={{ background: 'rgba(13,71,161,0.9)', backdropFilter: 'blur(4px)' }}>
+                  <div className="ai-wave flex gap-0.5 items-center" style={{ height: 16 }}>
+                    <span /><span /><span /><span />
+                  </div>
+                  AI Speaking
+                </div>
+              )}
+
+              {/* Face detection badge */}
+              <div className={`absolute bottom-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                result?.faceCount === 1
+                  ? 'text-white'
+                  : 'text-white'
+              }`} style={{ background: result?.faceCount === 1 ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)', backdropFilter: 'blur(4px)' }}>
+                {result?.faceCount === 1 ? '✓ Face Detected' : result?.faceCount === 0 ? '✗ Face Not Detected' : '⚠ Multi-Face'}
+              </div>
+
+              {/* Mic indicator */}
+              {isListening && (
+                <div className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold" style={{ background: 'rgba(16,185,129,0.9)', backdropFilter: 'blur(4px)' }}>
+                  🎤 Listening
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Proctoring status bar */}
+          <div className="px-4 pb-3">
+            <div className="rounded-xl p-3 border border-slate-200 bg-white">
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  {
+                    label: 'Integrity',
+                    value: `${intScore}%`,
+                    color: intScore >= 80 ? '#10B981' : intScore >= 55 ? '#F59E0B' : '#EF4444',
+                    bg: intScore >= 80 ? 'rgba(16,185,129,0.08)' : intScore >= 55 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+                  },
+                  {
+                    label: 'Gaze',
+                    value: result?.gazeDirection ?? '—',
+                    color: result?.gazeDirection === 'CENTER' ? '#10B981' : '#F59E0B',
+                    bg: result?.gazeDirection === 'CENTER' ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)',
+                  },
+                  {
+                    label: 'Head Pose',
+                    value: Math.abs(result?.headYaw ?? 0) < YAW_THRESHOLD ? 'Centered' : 'Turned',
+                    color: Math.abs(result?.headYaw ?? 0) < YAW_THRESHOLD ? '#10B981' : '#F59E0B',
+                    bg: Math.abs(result?.headYaw ?? 0) < YAW_THRESHOLD ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)',
+                  },
+                  {
+                    label: 'Violations',
+                    value: `${totalLocalViolations}`,
+                    color: totalLocalViolations === 0 ? '#10B981' : '#EF4444',
+                    bg: totalLocalViolations === 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                  },
+                ].map(({ label, value, color, bg }) => (
+                  <div key={label} className="flex flex-col items-center p-2 rounded-lg" style={{ background: bg }}>
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{label}</span>
+                    <span className="text-sm font-bold mt-0.5" style={{ color }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── RIGHT PANEL (40%) — Question + Answer ─── */}
+        <div className="flex flex-col overflow-y-auto" style={{ width: '40%', background: '#fff' }}>
+          <div className="flex-1 p-5 space-y-4">
+
+            {/* Progress timeline */}
+            <InterviewProgress
+              currentQuestion={interviewState.currentQuestionIndex + 1}
+              totalQuestions={interviewState.totalQuestions}
+              progress={((interviewState.currentQuestionIndex + 1) / interviewState.totalQuestions) * 100}
+            />
+
+            {/* Question Card */}
+            {currentQuestion ? (
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                {/* Card header */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100" style={{ background: '#F8FAFC' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Question {interviewState.currentQuestionIndex + 1} of {interviewState.totalQuestions}
                     </span>
                     {diffInfo && (
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${diffInfo.color}`}>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${diffInfo.color}`}>
                         {diffInfo.label}
                       </span>
                     )}
                   </div>
-                  {/* Phase badge */}
+                  {/* AI phase badge */}
                   {isRecording && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {aiPhase === 'speaking' && (
-                        <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">
-                          <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                          AI Speaking…
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(13,71,161,0.08)', color: '#0D47A1', border: '1px solid rgba(13,71,161,0.2)' }}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0D47A1] animate-pulse" />
+                          AI Speaking
                         </span>
                       )}
                       {aiPhase === 'listening' && isListening && (
-                        <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                          Listening to you…
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.08)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                          Listening
                         </span>
-                      )}
-                      {aiPhase === 'listening' && !isListening && sttSupported && (
-                        <span className="text-xs text-slate-400">Mic ready</span>
                       )}
                     </div>
                   )}
                 </div>
 
                 {/* Question text */}
-                <div className="px-6 py-5">
-                  <p className="text-lg font-semibold text-slate-800 leading-relaxed">
-                    {currentQuestion.text}
-                  </p>
+                <div className="px-5 py-5 bg-white">
+                  <p className="text-base font-semibold text-slate-800 leading-relaxed">{currentQuestion.text}</p>
+                  {currentQuestion.category && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(13,71,161,0.06)', color: '#0D47A1' }}>
+                        {currentQuestion.category}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
+            ) : (
+              /* No question yet — start prompt */
+              !isRecording && interviewState.status === 'not_started' && (
+                <div className="rounded-2xl border border-slate-200 p-8 text-center bg-white shadow-sm slide-up">
+                  <div className="text-5xl mb-4">🎙️</div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">Ready to Begin?</h3>
+                  <p className="text-sm text-slate-500 mb-6">Your AI interviewer will ask 5 progressive questions. Take a deep breath — you've got this!</p>
+                  <button
+                    id="btn-start-interview"
+                    onClick={handleStartInterview}
+                    className="px-10 py-4 rounded-2xl text-white font-bold text-base transition-all"
+                    style={{ background: 'linear-gradient(135deg, #0D47A1, #1565C0)', boxShadow: '0 4px 20px rgba(13,71,161,0.35)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
+                  >
+                    🚀 Start Interview
+                  </button>
+                </div>
+              )
             )}
 
-            {/* ── Voice Answer Panel ── */}
+            {/* Voice Answer Panel */}
             {isRecording && currentQuestion && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-slate-100">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all
-                    ${isListening ? 'bg-emerald-500 shadow-lg shadow-emerald-200 animate-pulse' : 'bg-slate-200'}`}>
+              <div className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden bg-white">
+                <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100" style={{ background: isListening ? 'rgba(16,185,129,0.04)' : '#F8FAFC' }}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all ${
+                    isListening ? 'shadow-lg animate-pulse' : ''
+                  }`} style={{ background: isListening ? '#10B981' : '#E2E8F0' }}>
                     🎤
                   </div>
                   <div>
                     <div className="text-sm font-bold text-slate-700">
-                      {isAISpeaking ? 'AI is speaking — listen carefully' :
-                       isListening  ? 'Listening to your answer…' :
-                                      'Your Answer'}
+                      {isAISpeaking ? 'AI is speaking — listen carefully'
+                       : isListening  ? 'Listening to your answer…'
+                                      : 'Your Answer'}
                     </div>
                     <div className="text-xs text-slate-400">
-                      {sttSupported
-                        ? 'Speak clearly — your answer is captured automatically'
-                        : 'Speech recognition not available — type below'}
+                      {sttSupported ? 'Speak clearly — captured automatically' : 'Speech recognition unavailable — type below'}
                     </div>
                   </div>
                 </div>
 
-                <div className="px-6 py-4 space-y-4">
-                  {/* Live transcript / text area */}
+                <div className="px-5 py-4 space-y-4">
+                  {/* Live transcript */}
                   {sttSupported ? (
-                    <div className={`min-h-[80px] rounded-xl border-2 p-4 text-sm transition-all
-                      ${isListening
-                        ? 'border-emerald-300 bg-emerald-50/60'
-                        : 'border-slate-200 bg-slate-50'}`}>
+                    <div className={`min-h-[80px] rounded-xl border-2 p-4 text-sm transition-all ${
+                      isListening ? 'border-[#10B981] bg-emerald-50/40' : 'border-slate-200 bg-slate-50'
+                    }`}>
                       {activeAnswer ? (
                         <p className="text-slate-800 leading-relaxed">{activeAnswer}</p>
                       ) : (
@@ -535,8 +693,8 @@ const Interview: React.FC = () => {
                     </div>
                   ) : (
                     <textarea
-                      className="w-full min-h-[100px] rounded-xl border-2 border-slate-200 p-4 text-sm
-                        text-slate-800 resize-none focus:outline-none focus:border-violet-400 bg-white"
+                      className="w-full min-h-[100px] rounded-xl border-2 border-slate-200 p-4 text-sm text-slate-800 resize-none focus:outline-none bg-white"
+                      style={{ focusBorderColor: '#0D47A1' } as any}
                       placeholder="Type your answer here…"
                       value={textAnswer}
                       onChange={e => setTextAnswer(e.target.value)}
@@ -544,39 +702,39 @@ const Interview: React.FC = () => {
                   )}
 
                   {sttError && (
-                    <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <p className="text-xs text-[#EF4444] rounded-lg px-3 py-2" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
                       ⚠️ {sttError}
                     </p>
                   )}
 
-                  {/* Action buttons */}
+                  {/* Submit button */}
                   <div className="flex items-center gap-3">
-                    {/* Submit & Next */}
                     <button
                       id="btn-submit-answer"
                       onClick={handleSubmitAnswer}
                       disabled={isAISpeaking || securityBlocked}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm
-                        transition-all duration-200
-                        ${isAISpeaking || securityBlocked
-                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-violet-600 to-blue-600 text-white hover:from-violet-700 hover:to-blue-700 shadow-md hover:shadow-lg'}`}
+                      className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                      style={{
+                        background: (isAISpeaking || securityBlocked) ? '#E2E8F0' : 'linear-gradient(135deg, #0D47A1, #1565C0)',
+                        color: (isAISpeaking || securityBlocked) ? '#94A3B8' : '#fff',
+                        boxShadow: (isAISpeaking || securityBlocked) ? 'none' : '0 3px 12px rgba(13,71,161,0.3)',
+                        cursor: (isAISpeaking || securityBlocked) ? 'not-allowed' : 'pointer',
+                      }}
                     >
-                      <span>
-                        {interviewState.currentQuestionIndex + 1 >= interviewState.totalQuestions
-                          ? '✅ Finish Interview'
-                          : '➡️ Submit & Next Question'}
-                      </span>
+                      {interviewState.currentQuestionIndex + 1 >= interviewState.totalQuestions
+                        ? '✅ Finish Interview'
+                        : '➡️ Submit & Next Question'}
                     </button>
 
-                    {/* Manual mic toggle (fallback) */}
                     {sttSupported && !isAISpeaking && (
                       <button
                         onClick={isListening ? stopListening : startListening}
-                        className={`p-3 rounded-xl border-2 font-bold text-sm transition-all
-                          ${isListening
-                            ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100'
-                            : 'bg-white border-slate-300 text-slate-600 hover:border-violet-400'}`}
+                        className="p-3 rounded-xl border-2 font-bold text-sm transition-all"
+                        style={{
+                          background: isListening ? 'rgba(239,68,68,0.08)' : '#fff',
+                          borderColor: isListening ? '#EF4444' : '#E2E8F0',
+                          color: isListening ? '#EF4444' : '#64748B',
+                        }}
                         title={isListening ? 'Stop listening' : 'Start listening'}
                       >
                         {isListening ? '⏹ Stop' : '🎤 Mic'}
@@ -586,294 +744,73 @@ const Interview: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* ── Progress ── */}
-            <InterviewProgress
-              currentQuestion={interviewState.currentQuestionIndex + 1}
-              totalQuestions={interviewState.totalQuestions}
-              progress={((interviewState.currentQuestionIndex + 1) / interviewState.totalQuestions) * 100}
-            />
-
-            {/* ── Start button (pre-interview) ── */}
-            {!isRecording && interviewState.status === 'not_started' && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
-                <div className="text-5xl mb-4">🎙️</div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">Ready to Begin?</h2>
-                <p className="text-slate-500 text-sm mb-6">
-                  The AI will speak each question aloud. Respond verbally — your voice is captured automatically.
-                </p>
-                <div className="flex justify-center gap-3 mb-6 flex-wrap">
-                  {['Easy', 'Easy', 'Moderate', 'Moderate', 'Hard'].map((d, i) => (
-                    <span key={i} className={`text-xs font-bold px-3 py-1 rounded-full border
-                      ${d === 'Hard' ? 'bg-red-50 text-red-700 border-red-300' :
-                        d === 'Moderate' ? 'bg-amber-50 text-amber-700 border-amber-300' :
-                        'bg-emerald-50 text-emerald-700 border-emerald-300'}`}>
-                      Q{i+1}: {d}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  id="btn-start-interview"
-                  onClick={handleStartInterview}
-                  disabled={!mediaStream}
-                  className="bg-gradient-to-r from-violet-600 to-blue-600 text-white px-8 py-4
-                    rounded-xl font-bold text-base hover:from-violet-700 hover:to-blue-700
-                    shadow-lg hover:shadow-xl disabled:opacity-50 transition-all duration-200"
-                >
-                  🚀 Start Interview
-                </button>
-              </div>
-            )}
-
-            {/* ── End Interview button (during session) ── */}
-            {isRecording && (
-              <div className="flex justify-end">
-                <button
-                  id="btn-end-interview"
-                  onClick={handleEndInterview}
-                  disabled={securityBlocked}
-                  className="bg-slate-100 text-slate-600 border border-slate-300 px-5 py-2.5
-                    rounded-xl text-sm font-semibold hover:bg-red-50 hover:text-red-600
-                    hover:border-red-300 transition-all disabled:opacity-50"
-                >
-                  🏁 End Interview Early
-                </button>
-              </div>
-            )}
-
-            {/* Recording indicator */}
-            {isRecordingVideo && (
-              <div className="fixed bottom-20 right-6 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50">
-                <span className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
-                <span className="text-sm font-semibold">REC {formatElapsed(elapsedSeconds)}</span>
-              </div>
-            )}
-
-            {/* Cheating alert banner */}
-            {(result?.isLookingAway || result?.isHeadTurned || result?.phoneVisible ||
-              result?.isMultipleFaces || (result !== null && result.faceCount === 0)) && (
-              <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-red-600 border border-red-400 text-white px-6 py-4 rounded-xl shadow-2xl z-50 max-w-lg w-full mx-4">
-                <div className="font-bold text-base mb-1">⚠️ Integrity Warning</div>
-                <p className="text-sm opacity-90">
-                  {result?.faceCount === 0 && '🚫 Face not visible! '}
-                  {result?.isLookingAway && 'Eyes not on screen. '}
-                  {result?.isHeadTurned && 'Head turned away. '}
-                  {result?.phoneVisible && '📱 Phone detected! '}
-                  {result?.isMultipleFaces && '👥 Multiple people detected!'}
-                </p>
-              </div>
-            )}
           </div>
-
-          {/* ─── RIGHT: Detection Dashboard ─── */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-20 space-y-3">
-
-              {/* === Integrity Score === */}
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-bold text-slate-600 tracking-wide uppercase">🛡️ Integrity Monitor</h2>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${detection.isRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`} />
-                    <span className={`text-xs font-semibold ${detection.isRunning ? 'text-green-600' : 'text-slate-400'}`}>
-                      {detection.isRunning ? 'ML Active' : isRecording ? 'Browser Only' : 'Standby'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-end justify-between mb-2">
-                  <div>
-                    <div className={`text-4xl font-extrabold ${intScore >= 80 ? 'text-green-600' : intScore >= 60 ? 'text-yellow-600' : intScore >= 40 ? 'text-orange-600' : 'text-red-600'}`}>
-                      {intScore.toFixed(0)}
-                    </div>
-                    <div className="text-xs text-slate-400">Integrity Score</div>
-                  </div>
-                  <div className={`px-3 py-1 rounded-lg border text-xs font-bold ${RISK_COLOR(risk)}`}>
-                    {risk} RISK
-                  </div>
-                </div>
-                <BAR value={intScore} color={intScore >= 80 ? 'bg-green-500' : intScore >= 60 ? 'bg-yellow-500' : intScore >= 40 ? 'bg-orange-500' : 'bg-red-500'} />
-
-                {result && (
-                  <div className="mt-3 grid grid-cols-3 gap-1 text-center">
-                    {[
-                      { label: 'Yaw', value: result.headYaw, threshold: YAW_THRESHOLD },
-                      { label: 'Pitch', value: result.headPitch, threshold: PITCH_THRESHOLD },
-                      { label: 'Iris', value: result.gazeRatio, isRatio: true },
-                    ].map(({ label, value, threshold, isRatio }) => (
-                      <div key={label} className="bg-slate-50 border border-slate-200 rounded-lg p-1.5">
-                        <div className="text-[10px] text-slate-400">{label}</div>
-                        <div className={`text-xs font-bold ${
-                          isRatio ? 'text-blue-600' :
-                          Math.abs(value) > (threshold ?? 999) ? 'text-red-600' : 'text-green-600'
-                        }`}>
-                          {isRatio ? value.toFixed(2) : `${value > 0 ? '+' : ''}${value.toFixed(1)}°`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {isRecording && (
-                  <div className="mt-2 text-xs text-slate-400 text-right">
-                    Session: {formatElapsed(elapsedSeconds)}
-                  </div>
-                )}
-              </div>
-
-              {/* === Eye Gaze === */}
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">👁️ Eye Gaze</h3>
-                  {result && (
-                    <span className={`text-sm font-bold ${GAZE_COLOR(result.gazeDirection)}`}>
-                      {result.gazeDirection ?? 'N/A'}
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 mb-2">
-                  {(['LEFT','CENTER','RIGHT','DOWN','UP'] as const).map(dir => {
-                    const active = result?.gazeDirection === dir;
-                    const bgCls = active
-                      ? dir === 'CENTER' ? 'bg-green-100 border-green-400 text-green-800'
-                        : dir === 'DOWN' ? 'bg-orange-100 border-orange-400 text-orange-800'
-                        : 'bg-red-100 border-red-400 text-red-800'
-                      : 'bg-slate-50 border-slate-200 text-slate-400';
-                    const label = dir === 'LEFT' ? '← L' : dir === 'RIGHT' ? 'R →' : dir === 'DOWN' ? '↓ D' : dir === 'UP' ? '↑ U' : '● CTR';
-                    return (
-                      <div key={dir} className={`py-2 rounded-lg text-center text-xs font-semibold transition-all border ${bgCls}`}>
-                        {label}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-between text-xs border-t border-slate-100 pt-2">
-                  <span className="text-slate-400">Total look-aways</span>
-                  <span className={`font-bold ${detection.counters.totalLookAways > 0 ? 'text-orange-600' : 'text-slate-400'}`}>
-                    {detection.counters.totalLookAways}
-                  </span>
-                </div>
-              </div>
-
-              {/* === Face Detection === */}
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">👤 Face Detection</h3>
-                {result ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Faces visible</span>
-                      <span className={`text-sm font-bold ${result.faceCount === 1 ? 'text-green-600' : result.faceCount === 0 ? 'text-red-600' : 'text-orange-600'}`}>
-                        {result.faceCount === 0 ? '❌ None' : result.faceCount === 1 ? '✅ 1' : `⚠️ ${result.faceCount}`}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {[
-                        { label: 'Disappearances', value: detection.counters.faceAbsenceCount, color: 'red' },
-                        { label: 'Multi-face', value: detection.counters.multiFaceCount, color: 'orange' },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className={`rounded-lg p-2 text-center border ${value > 0 ? `bg-${color}-50 border-${color}-200` : 'bg-slate-50 border-slate-200'}`}>
-                          <div className={`text-lg font-extrabold ${value > 0 ? `text-${color}-600` : 'text-slate-300'}`}>{value}</div>
-                          <div className="text-[10px] text-slate-400">{label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 text-center py-2">Waiting for data…</p>
-                )}
-              </div>
-
-              {/* === Phone Detection === */}
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">📱 Phone Detection</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Phone Visible</span>
-                    <span className={`text-sm font-bold ${result?.phoneVisible ? 'text-red-600' : 'text-green-600'}`}>
-                      {result?.phoneVisible ? '⚠️ YES' : '✅ No'}
-                    </span>
-                  </div>
-                  <div className={`rounded-lg p-2 text-center border ${detection.counters.phoneDetectedCount > 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
-                    <div className={`text-lg font-extrabold ${detection.counters.phoneDetectedCount > 0 ? 'text-red-600' : 'text-slate-300'}`}>{detection.counters.phoneDetectedCount}</div>
-                    <div className="text-[10px] text-slate-400">Phone Events</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* === Browser Events === */}
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">🌐 Browser Events</h3>
-                  {totalLocalViolations > 0 && (
-                    <span className="text-xs bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-bold">
-                      {totalLocalViolations} events
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  {[
-                    { label: 'Tab switches',       key: 'tabSwitches'    as keyof LocalViolations, icon: '🔀' },
-                    { label: 'Window focus lost',  key: 'windowBlurs'    as keyof LocalViolations, icon: '👁️' },
-                    { label: 'Right-click blocked',key: 'rightClicks'    as keyof LocalViolations, icon: '🖱️' },
-                    { label: 'Copy/paste blocked', key: 'copyPastes'     as keyof LocalViolations, icon: '📋' },
-                    { label: 'Suspicious hotkeys', key: 'suspiciousKeys' as keyof LocalViolations, icon: '⌨️' },
-                  ].map(({ label, key, icon }) => {
-                    const count = localViolations[key];
-                    return (
-                      <div key={key} className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500">{icon} {label}</span>
-                        <span className={`font-bold ${count > 0 ? 'text-orange-600' : 'text-slate-300'}`}>{count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Violations log */}
-              {totalLocalViolations > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <h3 className="text-xs font-bold text-red-600 uppercase tracking-wide mb-2">⚠️ Session Events</h3>
-                  <div className="space-y-1.5">
-                    {localViolations.tabSwitches > 0 && (
-                      <div className="flex items-start gap-2 text-xs">
-                        <SeverityBadge severity="HIGH" />
-                        <span className="text-slate-600">Tab switched {localViolations.tabSwitches}×</span>
-                      </div>
-                    )}
-                    {localViolations.copyPastes > 0 && (
-                      <div className="flex items-start gap-2 text-xs">
-                        <SeverityBadge severity="MEDIUM" />
-                        <span className="text-slate-600">Copy/paste blocked {localViolations.copyPastes}×</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {!detection.isRunning && isRecording && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-                  ⚠️ <strong>MediaPipe loading</strong> — ensure internet access for CDN.
-                </div>
-              )}
-              {!isRecording && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center text-xs text-slate-400">
-                  Detection will activate when the interview starts.
-                </div>
-              )}
-            </div>
-          </div>
-
         </div>
       </div>
 
-      {/* Global ML badge */}
-      {detection.isRunning && (
-        <div className="fixed top-4 right-4 bg-green-600 border border-green-400 text-white text-xs px-4 py-2 rounded-full shadow-lg z-40 flex items-center gap-2">
-          <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-          ML Detection Active
+      {/* ── BOTTOM CONTROLS BAR ── */}
+      <div className="flex items-center justify-between px-6 py-3 bg-white border-t border-slate-100 shadow-sm" style={{ height: 64 }}>
+        {/* Left: connection + session */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <div className="w-2 h-2 rounded-full bg-[#10B981]" />
+            Connected
+          </div>
+          <div className="text-xs text-slate-400 font-mono">{formatElapsed(elapsedSeconds)}</div>
         </div>
-      )}
+
+        {/* Center: key controls */}
+        <div className="flex items-center gap-2">
+          {/* Mute toggle */}
+          <button
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:border-slate-300 bg-white transition-all"
+            onClick={() => {
+              const track = (videoRef.current?.srcObject as MediaStream)?.getAudioTracks()[0];
+              if (track) track.enabled = !track.enabled;
+            }}
+            title="Toggle microphone"
+          >
+            🎤 Mute
+          </button>
+
+          {/* Fullscreen */}
+          <button
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:border-slate-300 bg-white transition-all"
+            onClick={() => {
+              if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+              else document.exitFullscreen();
+            }}
+            title="Toggle fullscreen"
+          >
+            ⛶ Fullscreen
+          </button>
+
+          {/* Help */}
+          <button
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:border-slate-300 bg-white transition-all"
+            title="Help"
+          >
+            ? Help
+          </button>
+        </div>
+
+        {/* Right: End interview */}
+        {isRecording && (
+          <button
+            onClick={handleEndInterview}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-xs font-bold transition-all"
+            style={{ background: '#EF4444', boxShadow: '0 2px 10px rgba(239,68,68,0.3)' }}
+          >
+            ⏹ End Interview
+          </button>
+        )}
+        {!isRecording && (
+          <div className="text-xs text-slate-400">Session not active</div>
+        )}
+      </div>
     </div>
   );
 };
 
 export default Interview;
+

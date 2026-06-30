@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { notificationApi } from '../../services/api';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { UnifiedLayout } from '@/features/shared/UnifiedLayout';
+import { Bell, Check, Inbox, RefreshCw, ChevronRight } from 'lucide-react';
+import clsx from 'clsx';
 
 interface Notification {
   id: string;
@@ -26,7 +29,9 @@ const NOTIFICATION_ICON = (title: string): string => {
 export default function NotificationsPage() {
   return (
     <ProtectedRoute allowedRoles={['candidate', 'hr', 'admin']}>
-      <NotificationsContent />
+      <UnifiedLayout title="Notifications">
+        <NotificationsContent />
+      </UnifiedLayout>
     </ProtectedRoute>
   );
 }
@@ -53,7 +58,9 @@ function NotificationsContent() {
     }
   }, [page, unreadOnly]);
 
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const handleMarkRead = async (id: string) => {
     await notificationApi.markRead(id);
@@ -72,107 +79,145 @@ function NotificationsContent() {
   const totalPages = Math.ceil(total / PER_PAGE);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Header */}
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="space-y-6 font-sans text-slate-800">
+      
+      {/* Control panel card */}
+      <div className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <Link href="/applications" style={{ color: '#a78bfa', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}>← Applications</Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' }}>
-            <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, background: 'linear-gradient(135deg, #a78bfa, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Notifications
-            </h1>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Inbox Telemetry</span>
             {unreadCount > 0 && (
-              <span style={{ background: '#a78bfa', color: '#fff', fontSize: '12px', fontWeight: 800, padding: '2px 9px', borderRadius: '20px' }}>
-                {unreadCount}
+              <span className="px-2 py-0.5 bg-rose-500 text-[10px] font-bold rounded-full text-white">
+                {unreadCount} Unread
               </span>
             )}
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'rgba(255,255,255,0.45)' }}>{total} total notifications</p>
+          <p className="text-xs text-slate-405 mt-1 font-semibold">{total} total alerts received</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           <button
             onClick={() => { setUnreadOnly((v) => !v); setPage(1); }}
-            style={{ padding: '9px 18px', borderRadius: '8px', border: `1px solid ${unreadOnly ? 'rgba(167,139,250,0.4)' : 'rgba(255,255,255,0.12)'}`, background: unreadOnly ? 'rgba(167,139,250,0.12)' : 'rgba(255,255,255,0.05)', color: unreadOnly ? '#a78bfa' : '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}
+            className={clsx(
+              "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border",
+              unreadOnly 
+                ? "bg-blue-50/80 border-blue-100 text-[#0D47A1]" 
+                : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
+            )}
           >
-            {unreadOnly ? '● Unread Only' : '○ All'}
+            {unreadOnly ? '● Unread Alerts Only' : '○ All Alerts'}
           </button>
           {unreadCount > 0 && (
-            <button onClick={handleMarkAll} disabled={isMarkingAll}
-              style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', background: 'rgba(167,139,250,0.15)', color: '#a78bfa', cursor: isMarkingAll ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '13px' }}>
+            <button 
+              onClick={handleMarkAll} 
+              disabled={isMarkingAll}
+              className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100/50 rounded-xl text-xs font-bold transition disabled:opacity-50"
+            >
               {isMarkingAll ? 'Marking...' : 'Mark All Read'}
             </button>
           )}
         </div>
       </div>
 
-      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 40px' }}>
+      {/* Notifications list */}
+      <div className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm min-h-[400px]">
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.35)' }}>Loading...</div>
+          <div className="py-24 text-center text-slate-400 text-xs font-medium">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0D47A1]" />
+            Fetching alerts…
+          </div>
         ) : notifications.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 40px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔔</div>
-            <h3 style={{ margin: '0 0 8px', color: 'rgba(255,255,255,0.6)', fontSize: '18px' }}>
-              {unreadOnly ? 'No unread notifications' : 'No notifications yet'}
-            </h3>
-            <p style={{ margin: 0, color: 'rgba(255,255,255,0.35)', fontSize: '14px' }}>Activity updates will appear here.</p>
+          <div className="py-16 text-center max-w-sm mx-auto">
+            <div className="text-5xl mb-4 bg-slate-50 p-4 rounded-full w-fit mx-auto">🔔</div>
+            <h3 className="font-bold text-slate-700 text-sm">No notifications found</h3>
+            <p className="text-slate-400 text-xs mt-1">
+              {unreadOnly ? 'You have no unread notification alerts.' : 'All caught up! No notifications received yet.'}
+            </p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="space-y-3.5">
             {notifications.map((n) => (
               <div
                 key={n.id}
-                style={{ background: n.is_read ? 'rgba(255,255,255,0.03)' : 'rgba(167,139,250,0.06)', border: `1px solid ${n.is_read ? 'rgba(255,255,255,0.07)' : 'rgba(167,139,250,0.2)'}`, borderRadius: '14px', padding: '18px 20px', display: 'flex', gap: '16px', alignItems: 'flex-start', transition: 'all 0.2s ease' }}
+                className={clsx(
+                  "p-4 border rounded-2xl flex gap-4 items-start transition-all duration-200 group relative",
+                  n.is_read 
+                    ? "border-slate-100 bg-white" 
+                    : "border-[#0D47A1]/20 bg-[#0D47A1]/5/10" // soft primary glow for unread
+                )}
+                style={{
+                  backgroundColor: !n.is_read ? 'rgba(13, 71, 161, 0.03)' : undefined
+                }}
               >
-                {/* Icon */}
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: n.is_read ? 'rgba(255,255,255,0.06)' : 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                {/* Icon wrapper */}
+                <div className={clsx(
+                  "w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0",
+                  n.is_read ? "bg-slate-50 text-slate-550 border border-slate-100" : "bg-[#0D47A1]/10 text-[#0D47A1] border border-[#0D47A1]/20"
+                )}>
                   {NOTIFICATION_ICON(n.title)}
                 </div>
 
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-                    <div>
-                      <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: n.is_read ? 500 : 700, color: n.is_read ? 'rgba(255,255,255,0.7)' : '#fff' }}>{n.title}</p>
-                      <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>{n.message}</p>
-                      <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.28)' }}>
-                        {new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} at {new Date(n.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
+                {/* Content block */}
+                <div className="flex-1 min-w-0 pr-12">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className={clsx(
+                      "text-sm tracking-tight",
+                      n.is_read ? "text-slate-700 font-semibold" : "text-slate-900 font-black"
+                    )}>
+                      {n.title}
+                    </p>
                     {!n.is_read && (
-                      <button
-                        onClick={() => handleMarkRead(n.id)}
-                        style={{ flexShrink: 0, padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.25)', background: 'rgba(167,139,250,0.1)', color: '#a78bfa', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
-                      >
-                        Mark read
-                      </button>
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse inline-block" />
                     )}
                   </div>
+                  <p className="text-xs text-slate-450 mt-1 leading-relaxed font-medium">
+                    {n.message}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-2 font-bold flex items-center gap-1">
+                    <span>⏱</span>
+                    <span>
+                      {new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} at {new Date(n.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </p>
                 </div>
 
-                {/* Unread dot */}
+                {/* Quick mark read button */}
                 {!n.is_read && (
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a78bfa', flexShrink: 0, marginTop: '6px', boxShadow: '0 0 8px rgba(167,139,250,0.6)' }} />
+                  <button
+                    onClick={() => handleMarkRead(n.id)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-450 hover:text-slate-700 shadow-sm transition-all duration-200 shrink-0"
+                    title="Mark as read"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
                 )}
               </div>
             ))}
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Pagination controls */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '28px', alignItems: 'center' }}>
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: page === 1 ? 'rgba(255,255,255,0.25)' : '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '13px' }}>
+          <div className="flex justify-center items-center space-x-3 pt-6 mt-6 border-t border-slate-100">
+            <button 
+              onClick={() => setPage((p) => Math.max(1, p - 1))} 
+              disabled={page === 1}
+              className="px-3.5 py-2 rounded-xl border border-slate-200 hover:border-slate-350 bg-white hover:bg-slate-50 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               ← Prev
             </button>
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', padding: '0 12px' }}>Page {page} of {totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: page === totalPages ? 'rgba(255,255,255,0.25)' : '#fff', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '13px' }}>
+            <span className="text-xs text-slate-400 font-bold">Page {page} of {totalPages}</span>
+            <button 
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))} 
+              disabled={page === totalPages}
+              className="px-3.5 py-2 rounded-xl border border-slate-200 hover:border-slate-350 bg-white hover:bg-slate-50 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               Next →
             </button>
           </div>
         )}
       </div>
+
     </div>
   );
 }

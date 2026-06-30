@@ -190,7 +190,59 @@ class ATSConnector:
                     delay = (2 ** attempt) * base_delay + random.uniform(-0.2, 0.2)
                     await asyncio.sleep(max(0.1, delay))
 
+    async def sync_jd_to_ats(
+        self,
+        jd_id: str,
+        title: str,
+        required_skills: list,
+        responsibilities: list = None,
+        preferred_skills: list = None,
+        tools_and_technologies: list = None,
+        company: str = None,
+        description: str = None,
+        experience_level: str = "entry",
+    ) -> dict:
+        """
+        Creates or updates the JD in the ATS Engine.
+        Must be called before compare_resume to ensure the JD exists in the ATS system.
+        Uses POST /internship with the jd_id as the id field.
+        """
+        payload = {
+            "id": jd_id,
+            "title": title,
+            "company": company or "CAPVIA",
+            "department": None,
+            "location": None,
+            "is_remote": False,
+            "experience_level": experience_level.lower() if experience_level else "entry",
+            "short_description": (description or "")[:500] if description else None,
+            "responsibilities": responsibilities or [title],
+            "required_skills": required_skills or ["General"],
+            "preferred_skills": preferred_skills or [],
+            "tools_and_technologies": tools_and_technologies or [],
+            "expected_projects": [],
+            "full_jd_text": description or title,
+            "application_deadline": None,
+        }
+        try:
+            res = await self._request_with_retry(
+                method="POST",
+                path="/internship",
+                json_data=payload,
+                custom_timeout=10.0
+            )
+            data = res.json()
+            logger.info(f"JD {jd_id} synced to ATS Engine. Response: {data}")
+            return data
+        except ATSConnectorException as e:
+            # If JD already exists (409 conflict), that's fine — it's already in the ATS
+            if e.status_code == 409 or "already" in str(e).lower():
+                logger.info(f"JD {jd_id} already exists in ATS Engine (409). Proceeding.")
+                return {"id": jd_id, "status": "already_exists"}
+            raise
+
     async def upload_resume(self, file_content: bytes, filename: str, jd_id: Optional[str] = None) -> str:
+
         """
         Sequence 1.1: Uploads resume to start parsing.
         """
@@ -213,6 +265,16 @@ class ATSConnector:
         if not resume_id:
             raise ATSConnectorException("Resume upload succeeded but no resume_id returned.", details=data)
         return resume_id
+
+    async def get_resume_status(self, resume_id: str) -> dict:
+        """
+        Polls processing status of an uploaded resume.
+        """
+        res = await self._request_with_retry(
+            method="GET",
+            path=f"/resume/{resume_id}/status"
+        )
+        return res.json()
 
     async def compare_resume(self, jd_id: str, resume_id: str, force_rerun: bool = False) -> dict:
         """

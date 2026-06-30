@@ -104,7 +104,7 @@ api.interceptors.response.use(
                 // Refresh failed → redirect to login (if not already there)
                 tokenStore.clear();
                 if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-                    window.location.href = "/login?reason=session_expired";
+                    window.location.href = "/ats/login?reason=session_expired";
                 }
                 return Promise.reject(error);
             }
@@ -127,13 +127,20 @@ api.interceptors.response.use(
 
 async function _refreshAccessToken(): Promise<string | null> {
     try {
+        const refreshToken = typeof window !== "undefined" ? localStorage.getItem("capvia_refresh_token") : null;
+        if (!refreshToken) return null;
+
         const response = await axios.post(
             `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
-            {},
+            { refresh_token: refreshToken },
             { withCredentials: true },
         );
         const newToken = response.data.access_token;
+        const newRefreshToken = response.data.refresh_token;
         tokenStore.set(newToken);
+        if (typeof window !== "undefined" && newRefreshToken) {
+            localStorage.setItem("capvia_refresh_token", newRefreshToken);
+        }
         return newToken;
     } catch {
         return null;
@@ -156,6 +163,7 @@ export interface RegisterPayload {
 
 export interface AuthResponse {
     access_token: string;
+    refresh_token?: string;
     token_type: string;
     expires_in: number;
     user: {
@@ -175,18 +183,30 @@ export const authApi = {
     login: async (payload: LoginPayload): Promise<AuthResponse> => {
         const { data } = await api.post<AuthResponse>("/api/v1/auth/login", payload);
         tokenStore.set(data.access_token);
+        if (typeof window !== "undefined" && data.refresh_token) {
+            localStorage.setItem("capvia_refresh_token", data.refresh_token);
+        }
         return data;
     },
 
     register: async (payload: RegisterPayload): Promise<AuthResponse> => {
         const { data } = await api.post<AuthResponse>("/api/v1/auth/register", payload);
         tokenStore.set(data.access_token);
+        if (typeof window !== "undefined" && data.refresh_token) {
+            localStorage.setItem("capvia_refresh_token", data.refresh_token);
+        }
         return data;
     },
 
     logout: async (): Promise<void> => {
-        await api.post("/api/v1/auth/logout");
-        tokenStore.clear();
+        try {
+            await api.post("/api/v1/auth/logout");
+        } finally {
+            tokenStore.clear();
+            if (typeof window !== "undefined") {
+                localStorage.removeItem("capvia_refresh_token");
+            }
+        }
     },
 
     me: async () => {

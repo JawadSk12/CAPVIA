@@ -17,7 +17,7 @@ from sqlalchemy import select
 
 from capvia_platform.api.dependencies import get_db, get_current_user
 from capvia_platform.core.exceptions import ResourceNotFoundException, AuthorizationException
-from capvia_platform.models.models import Application, DNAProfile, UserRole
+from capvia_platform.models.models import Application, DNAProfile, UserRole, User
 from capvia_platform.services.dna_service import DNAService, DIMENSION_LABELS
 
 logger = logging.getLogger("dna_router")
@@ -63,11 +63,11 @@ def _format_dna_response(dna: DNAProfile) -> dict:
     }
 
 
-def _assert_access(current_user: dict, app: Application):
+def _assert_access(current_user: User, app: Application):
     """RBAC guard: Candidates can only view their own DNA; HR/Admin/System see all."""
-    role = current_user.get("role", "")
+    role = current_user.role.value
     if role == UserRole.STUDENT.value:
-        user_id = current_user.get("sub") or current_user.get("user_id")
+        user_id = str(current_user.id)
         if user_id and str(app.candidate_id) != user_id:
             raise AuthorizationException("Candidates can only view their own DNA profile.")
 
@@ -86,12 +86,10 @@ async def generate_dna(
     Force a full DNA Engine profile generation for an application.
     Accessible by HR, Admin, or System.
     """
-    role = current_user.get("role", "")
-    allowed = {UserRole.HR.value, UserRole.ADMIN.value, "HR", "ADMIN", "system_admin"}
+    role = current_user.role.value
+    allowed = {UserRole.HR.value, UserRole.ADMIN.value}
     if role not in allowed:
-        roles_list = current_user.get("roles", [])
-        if "system_admin" not in roles_list:
-            raise AuthorizationException("Only HR, Admin, or System can generate DNA profiles.")
+        raise AuthorizationException("Only HR or Admin can generate DNA profiles.")
 
     app_uuid = uuid.UUID(application_id)
     stmt = select(Application).where(Application.id == app_uuid)
@@ -100,7 +98,7 @@ async def generate_dna(
     if not app:
         raise ResourceNotFoundException("Application", application_id)
 
-    user_id_str = current_user.get("sub") or current_user.get("user_id")
+    user_id_str = str(current_user.id)
     actor_uuid = uuid.UUID(user_id_str) if user_id_str else None
 
     dna = await DNAService.generate_dna_profile(
@@ -220,8 +218,8 @@ async def compare_dna_profiles(
     Body: { "application_ids": ["uuid1", "uuid2", ...] }
     Accessible by HR and Admin only.
     """
-    role = current_user.get("role", "")
-    allowed = {UserRole.HR.value, UserRole.ADMIN.value, "HR", "ADMIN"}
+    role = current_user.role.value
+    allowed = {UserRole.HR.value, UserRole.ADMIN.value}
     if role not in allowed:
         raise AuthorizationException("Only HR or Admin can perform DNA comparisons.")
 

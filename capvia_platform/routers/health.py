@@ -9,6 +9,10 @@ router = APIRouter()
 async def health_check():
     return {"status": "ok", "service": "capvia_api"}
 
+@router.get("/health/ping")
+async def health_check_ping():
+    return {"status": "ok", "message": "pong"}
+
 @router.get("/health/db")
 async def db_health_check(db: AsyncSession = Depends(get_db)):
     try:

@@ -29,10 +29,11 @@ export default function Navbar({ onMenuToggle, sidebarOpen }: NavbarProps) {
   const handleLogout = async () => {
     try {
       await logout();
-      router.push("/login");
       toast.success("Logged out successfully");
-    } catch {
-      toast.error("Logout failed");
+    } catch (err) {
+      console.warn("Server logout request failed, clearing frontend session:", err);
+    } finally {
+      router.push("/login");
     }
   };
 

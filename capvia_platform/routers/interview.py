@@ -4,13 +4,13 @@ import random
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 import redis.asyncio as aioredis
 
-from capvia_platform.api.dependencies import get_db, get_system_auth, get_candidate_auth
+from capvia_platform.api.dependencies import get_db, get_system_auth, get_current_user
 from capvia_platform.schemas.schemas import (
     StartInterviewRequest, StartInterviewResponse,
     SaveInterviewAnswerRequest, SaveInterviewAnswerResponse,
@@ -18,7 +18,7 @@ from capvia_platform.schemas.schemas import (
 )
 from capvia_platform.services.services import MappingService, RecruitmentProgressService
 from capvia_platform.models.models import (
-    ApplicationStatus, StageName, RiskLevel, RecommendationType, ApplicationMapping, InterviewResult, Application
+    ApplicationStatus, StageName, RiskLevel, RecommendationType, ApplicationMapping, InterviewResult, Application, User
 )
 from capvia_platform.core.config import settings
 from capvia_platform.core.exceptions import ResourceNotFoundException, BaseAPIException
@@ -113,17 +113,32 @@ async def start_interview(
 @router.post("/interview/answer", response_model=SaveInterviewAnswerResponse, tags=["Interview"])
 async def save_interview_answer(
     payload: SaveInterviewAnswerRequest,
-    candidate_claims: dict = Depends(get_candidate_auth),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Sequence 3.2: Saves audio, text transcript, and proctoring logs per question.
-    Calculates words per minute and filler word rate.
     """
-    app_id_str = candidate_claims.get("application_id")
-    if not app_id_str:
-        raise BaseAPIException("Invalid candidate authorization token", status_code=401, code="UNAUTHORIZED")
-    app_uuid = uuid.UUID(app_id_str)
+    # Resolve candidate's active application in INTERVIEW status
+    stmt_app = (
+        select(Application)
+        .where(
+            Application.candidate_id == current_user.id,
+            Application.status.in_([
+                ApplicationStatus.INTERVIEW_INVITED,
+                ApplicationStatus.INTERVIEW_IN_PROGRESS
+            ])
+        )
+        .order_by(Application.updated_at.desc())
+    )
+    res_app = await db.execute(stmt_app)
+    app = res_app.scalar_one_or_none()
+    if not app:
+        raise HTTPException(
+            status_code=404,
+            detail="No active interview session found for your candidate account."
+        )
+    app_uuid = app.id
 
     # Resolve question text by index
     question_text = f"Question {payload.question_index + 1}"
@@ -189,11 +204,11 @@ async def complete_interview(
     local_violations_json: str = Form(...),
     baselined_locally: Optional[bool] = Form(False),
     local_evaluation_report_json: Optional[str] = Form(None),
-    candidate_claims: dict = Depends(get_candidate_auth),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Sequence 3.3: Concludes interview and triggers evaluation. Supports fallback baseline payload when evaluation servers are offline.
+    Sequence 3.3: Concludes interview and triggers evaluation.
     """
     session_uuid = uuid.UUID(session_id)
     
@@ -206,6 +221,19 @@ async def complete_interview(
         raise ResourceNotFoundException("ApplicationMapping with session", session_id)
         
     app_id = app_map.application_id
+    
+    # Query application to check ownership
+    stmt_app = select(Application).where(Application.id == app_id)
+    res_app = await db.execute(stmt_app)
+    app_obj = res_app.scalar_one_or_none()
+    
+    if app_obj:
+        user_role_val = getattr(current_user.role, "value", str(current_user.role))
+        if app_obj.candidate_id != current_user.id and user_role_val not in ("ADMIN", "HR"):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. You do not own this interview session."
+            )
     
     # 2. Update stage status
     target_status = (
@@ -312,7 +340,7 @@ async def complete_interview(
 @router.get("/interview/status/{application_id}", tags=["Interview"])
 async def get_interview_status(
     application_id: str,
-    candidate_claims: dict = Depends(get_candidate_auth),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -324,6 +352,14 @@ async def get_interview_status(
     app = res.scalar_one_or_none()
     if not app:
         raise ResourceNotFoundException("Application", application_id)
+    
+    # Check ownership
+    user_role_val = getattr(current_user.role, "value", str(current_user.role))
+    if app.candidate_id != current_user.id and user_role_val not in ("ADMIN", "HR"):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. You do not own this application."
+        )
         
     status = "not_started"
     progress = 0

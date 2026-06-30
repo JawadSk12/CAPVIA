@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "AI-Powered Secure Video Interview System",
   "private": true,
-  "main": "electron/main.js",
   "homepage": "./",
   "dependencies": {
     "@tensorflow-models/face-landmarks-detection": "^1.0.6",
@@ -15,7 +14,6 @@
     "ajv": "^8.12.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
-    "electron-store": "^8.1.0",
     "lucide-react": "^0.294.0",
     "opencv.js": "^1.2.1",
     "react": "^18.2.0",
@@ -24,43 +22,13 @@
     "react-scripts": "5.0.1",
     "tailwind-merge": "^2.1.0",
     "typescript": "^4.9.5",
-    "uiohook-napi": "^1.5.4",
     "web-vitals": "^3.5.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "npm run build && electron-builder",
-    "electron:package:mac": "npm run build && electron-builder --mac",
-    "electron:package:win": "npm run build && electron-builder --win"
-  },
-  "build": {
-    "appId": "com.intellirecruit.kiosk",
-    "productName": "IntelliRecruit Interview",
-    "files": [
-      "build/**/*",
-      "electron/**/*",
-      "node_modules/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.education",
-      "target": ["dmg", "zip"],
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "hardenedRuntime": true
-    },
-    "win": {
-      "target": ["nsis"],
-      "requestedExecutionLevel": "highestAvailable"
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": true,
-      "allowToChangeInstallationDirectory": false
-    }
+    "start": "node node_modules/react-scripts/bin/react-scripts.js start",
+    "build": "node node_modules/react-scripts/bin/react-scripts.js build",
+    "test": "node node_modules/react-scripts/bin/react-scripts.js test",
+    "eject": "node node_modules/react-scripts/bin/react-scripts.js eject"
   },
   "eslintConfig": {
     "extends": [
@@ -82,13 +50,9 @@
   "devDependencies": {
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.16",
-    "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
-    "electron": "^28.1.0",
-    "electron-builder": "^24.9.1",
     "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6",
-    "wait-on": "^7.2.0"
+    "tailwindcss": "^3.3.6"
   }
 }
 

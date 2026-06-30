@@ -3,10 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.exceptions import RequestValidationError
 from capvia_platform.core.config import settings
-from capvia_platform.middleware.error_handler import global_exception_handler
+from capvia_platform.middleware.error_handler import global_exception_handler, validation_exception_handler
 from capvia_platform.middleware.logging import RequestLoggingMiddleware
 from capvia_platform.routers import health, ats, simulation, interview, webhooks, auth, companies, internships, applications, integrity, dna, rankings, reports
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,10 +37,12 @@ def create_app() -> FastAPI:
     # Setup CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"], # Update for production environments
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
     )
 
     # Setup custom logging middleware
@@ -46,9 +50,12 @@ def create_app() -> FastAPI:
     
     # Register global exception handler
     app.add_exception_handler(Exception, global_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
 
     # Include routers under the API v1 string prefix
     app.include_router(health.router, prefix="/api", tags=["Health"])
+    app.include_router(health.router, prefix=settings.API_V1_STR, tags=["Health"])
     app.include_router(ats.router, prefix=settings.API_V1_STR)
     app.include_router(simulation.router, prefix=settings.API_V1_STR)
     app.include_router(interview.router, prefix=settings.API_V1_STR)

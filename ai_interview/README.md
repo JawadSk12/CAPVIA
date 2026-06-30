@@ -92,7 +92,7 @@ The browser engine requires **zero backend** — detection runs fully in-browser
 ## 📁 Project Structure
 
 ```
-intell-Interview/
+ai_interview/
 │
 ├── src/                              React + TypeScript frontend
 │   ├── pages/

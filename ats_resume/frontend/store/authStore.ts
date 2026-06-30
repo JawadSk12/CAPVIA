@@ -152,6 +152,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
 // ─── Selectors ────────────────────────────────────────────────────────────────
 
-export const useIsHR      = () => useAuthStore((s) => s.user?.role === "HR" || s.user?.role === "ADMIN");
-export const useIsStudent = () => useAuthStore((s) => s.user?.role === "STUDENT");
-export const useIsAdmin   = () => useAuthStore((s) => s.user?.role === "ADMIN");
+export const useIsHR      = () => useAuthStore((s) => s.user?.role?.toUpperCase() === "HR" || s.user?.role?.toUpperCase() === "ADMIN");
+export const useIsStudent = () => useAuthStore((s) => s.user?.role?.toUpperCase() === "STUDENT" || s.user?.role?.toUpperCase() === "CANDIDATE");
+export const useIsAdmin   = () => useAuthStore((s) => s.user?.role?.toUpperCase() === "ADMIN");

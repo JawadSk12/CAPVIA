@@ -60,7 +60,7 @@ class InternshipResponse(BaseModel):
     id: int
     title: str
     company_id: int
-    created_by: int
+    created_by: Optional[int] = None
     description: Optional[str] = None
     responsibilities: Optional[str] = None
     requirements: Optional[str] = None

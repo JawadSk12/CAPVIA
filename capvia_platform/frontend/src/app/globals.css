@@ -2,13 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── CAPVIA Design System Tokens ──────────────────────────── */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --capvia-primary:   #0D47A1;
+  --capvia-secondary: #42A5F5;
+  --capvia-success:   #10B981;
+  --capvia-warning:   #F59E0B;
+  --capvia-danger:    #EF4444;
+  --capvia-bg:        #F8FAFC;
+  --font-outfit:      'Outfit', sans-serif;
+  --font-inter:       'Inter', sans-serif;
+  --font-mono:        'JetBrains Mono', monospace;
 }
 
+/* ── Base resets ──────────────────────────────────────────── */
 body {
-  color: rgb(var(--foreground-rgb));
-  background: white;
+  background: var(--capvia-bg);
+  color: #1E293B;
+  font-family: var(--font-inter);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* ── No-scrollbar utility ─────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Typography shortcuts ─────────────────────────────────── */
+.font-outfit  { font-family: var(--font-outfit); }
+.font-inter   { font-family: var(--font-inter); }
+.font-mono    { font-family: var(--font-mono); }
+
+/* ── Sidebar bg-[#0D47A1]/8 polyfill ─────────────────────── */
+.bg-primary-8 { background-color: rgba(13, 71, 161, 0.08); }
+
+/* ── Animations ───────────────────────────────────────────── */
+@keyframes ai-wave {
+  0%, 100% { transform: scaleY(0.4); }
+  50%       { transform: scaleY(1.0); }
+}
+.ai-wave-bar {
+  display: inline-block;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--capvia-primary);
+  animation: ai-wave 1s ease-in-out infinite;
+}
+
+@keyframes rec-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--capvia-danger);
+  animation: rec-dot 1.2s ease-in-out infinite;
+}
+
+/* ── Focus ring ───────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--capvia-primary);
+  outline-offset: 2px;
+}
+
+/* ── Glow & Pulse animations ─────────────────────────────── */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(66, 165, 245, 0.4), 0 0 12px rgba(66, 165, 245, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(66, 165, 245, 0.8), 0 0 24px rgba(66, 165, 245, 0.4);
+  }
+}
+.neon-pulse {
+  animation: neon-pulse 2s infinite ease-in-out;
+}
+
+@keyframes grid-flow {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(40px); }
+}
+.grid-flow-bg {
+  animation: grid-flow 20s linear infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+.animate-float {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+@keyframes draw-path {
+  0% { stroke-dashoffset: 1000; }
+  100% { stroke-dashoffset: 0; }
+}
+.animate-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-path 8s linear infinite;
+}
+

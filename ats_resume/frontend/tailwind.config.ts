@@ -5,75 +5,76 @@ const config: Config = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "/Volumes/KINGSTON/CAPVIA/infrastructure/shared_ui/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        // Primary brand colors
-        indigo: {
-          50:  "#EEF2FF",
-          100: "#E0E7FF",
-          200: "#C7D2FE",
-          300: "#A5B4FC",
-          400: "#818CF8",
-          500: "#6366F1",
-          600: "#4F46E5",
-          700: "#4338CA",
-          800: "#3730A3",
-          900: "#312E81",
+        primary: {
+          DEFAULT: '#0D47A1',
+          hover: '#0A3B85',
+          light: '#E3F2FD',
+          dark: '#0A3066',
         },
-        // Secondary / success
-        emerald: {
-          50:  "#ECFDF5",
-          100: "#D1FAE5",
-          400: "#34D399",
-          500: "#10B981",
-          600: "#059669",
+        secondary: {
+          DEFAULT: '#42A5F5',
+          hover: '#1E88E5',
+          light: '#E1F5FE',
+          dark: '#1565C0',
         },
-        // Warning
-        amber: {
-          400: "#FBBF24",
-          500: "#F59E0B",
-          600: "#D97706",
+        accent: {
+          DEFAULT: '#FFC107',
+          hover: '#FFB300',
+          light: '#FFF8E1',
+          dark: '#F57F17',
         },
-        // Danger
-        rose: {
-          400: "#FB7185",
-          500: "#F43F5E",
-          600: "#E11D48",
+        success: {
+          DEFAULT: '#10B981',
+          hover: '#059669',
+          light: '#ECFDF5',
         },
-        // Neutral text
-        slate: {
-          50:  "#F8FAFC",
-          100: "#F1F5F9",
-          200: "#E2E8F0",
-          300: "#CBD5E1",
-          400: "#94A3B8",
-          500: "#64748B",
-          600: "#475569",
-          700: "#334155",
-          800: "#1E293B",
-          900: "#0F172A",
+        warning: {
+          DEFAULT: '#F59E0B',
+          hover: '#D97706',
+          light: '#FFFBEB',
         },
+        danger: {
+          DEFAULT: '#EF4444',
+          hover: '#DC2626',
+          light: '#FEF2F2',
+        },
+        background: '#FFFFFF',
+        surface: '#F8FAFC',
+        
+        // Neutral palette fallback for compatibility
+        neutral: {
+          50: '#F8FAFC',
+          100: '#F1F5F9',
+          200: '#E2E8F0',
+          300: '#CBD5E1',
+          400: '#94A3B8',
+          500: '#64748B',
+          600: '#475569',
+          700: '#334155',
+          800: '#1E293B',
+          900: '#0F172A',
+        }
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
-      },
-      fontSize: {
-        "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
+        heading: ['var(--font-outfit)', 'Inter', 'sans-serif'],
+        sans: ['var(--font-inter)', 'sans-serif'],
+        mono: ['var(--font-jetbrains-mono)', 'monospace'],
       },
       borderRadius: {
-        "4xl": "2rem",
+        card: '20px',
+        button: '16px',
+        input: '16px',
+        dialog: '24px',
       },
       boxShadow: {
-        "glow-indigo": "0 0 20px rgba(79, 70, 229, 0.25)",
-        "glow-emerald": "0 0 20px rgba(16, 185, 129, 0.25)",
-        "glow-rose":   "0 0 20px rgba(244, 63, 94, 0.25)",
-        "card": "0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)",
-        "card-hover": "0 4px 24px rgba(79, 70, 229, 0.15)",
-        "floating": "0 8px 32px rgba(0,0,0,0.12)",
+        soft: '0 4px 10px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
+        professional: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 16px -6px rgba(0, 0, 0, 0.03)',
+        minimal: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02)',
       },
       animation: {
         "fade-in":   "fadeIn 0.3s ease forwards",
@@ -81,27 +82,11 @@ const config: Config = {
         "slide-in":  "slideIn 0.3s ease forwards",
         "pulse-slow": "pulse 3s ease-in-out infinite",
         "spin-slow": "spin 3s linear infinite",
-        "bounce-gentle": "bounceGentle 2s ease-in-out infinite",
-        "shimmer":   "shimmer 1.5s infinite",
-        "scale-in":  "scaleIn 0.2s ease forwards",
       },
       keyframes: {
         fadeIn:   { "0%": { opacity: "0" },                "100%": { opacity: "1" } },
         slideUp:  { "0%": { opacity: "0", transform: "translateY(16px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
         slideIn:  { "0%": { opacity: "0", transform: "translateX(-16px)" }, "100%": { opacity: "1", transform: "translateX(0)" } },
-        bounceGentle: { "0%,100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-6px)" } },
-        shimmer: { "0%": { backgroundPosition: "-200% 0" }, "100%": { backgroundPosition: "200% 0" } },
-        scaleIn: { "0%": { opacity: "0", transform: "scale(0.95)" }, "100%": { opacity: "1", transform: "scale(1)" } },
-      },
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        "hero-gradient": "linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #10B981 100%)",
-        "card-gradient": "linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%)",
-        "shimmer-gradient": "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)",
-      },
-      backdropBlur: {
-        xs: "2px",
       },
     },
   },
@@ -109,3 +94,4 @@ const config: Config = {
 };
 
 export default config;
+

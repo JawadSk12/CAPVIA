@@ -54,7 +54,8 @@ export default function RegisterPage() {
         role:      data.role,
       });
       toast.success("Account created! Welcome to CAPVIA.");
-      if (user.role === "HR") router.push("/hr/dashboard");
+      const userRole = user.role?.toUpperCase();
+      if (userRole === "HR") router.push("/hr/dashboard");
       else router.push("/student/dashboard");
     } catch (err: any) {
       const detail = err?.response?.data?.detail;

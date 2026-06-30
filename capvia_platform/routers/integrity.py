@@ -56,14 +56,12 @@ async def evaluate_integrity(
     db: AsyncSession = Depends(get_db)
 ):
     """Force a full Integrity Engine re-assessment for an application."""
-    user_role = current_user.get("role", "")
-    user_id_str = current_user.get("sub") or current_user.get("user_id")
+    user_role = current_user.role.value
+    user_id_str = str(current_user.id)
 
-    allowed_roles = {UserRole.HR.value, UserRole.ADMIN.value, "HR", "ADMIN", "system_admin"}
+    allowed_roles = {UserRole.HR.value, UserRole.ADMIN.value}
     if user_role not in allowed_roles:
-        roles_list = current_user.get("roles", [])
-        if "system_admin" not in roles_list:
-            raise AuthorizationException("Only HR, Admin, or System can run integrity assessments.")
+        raise AuthorizationException("Only HR or Admin can run integrity assessments.")
 
     app_uuid = uuid.UUID(application_id)
 
@@ -106,8 +104,8 @@ async def get_integrity(
     """Retrieve the current integrity assessment for an application."""
     app_uuid = uuid.UUID(application_id)
 
-    user_role = current_user.get("role", "")
-    user_id_str = current_user.get("sub") or current_user.get("user_id")
+    user_role = current_user.role.value
+    user_id_str = str(current_user.id)
 
     if user_role == UserRole.STUDENT.value:
         stmt = select(Application).where(Application.id == app_uuid)

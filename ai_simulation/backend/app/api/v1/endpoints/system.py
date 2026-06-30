@@ -61,7 +61,7 @@ def verify_system_token(authorization: Optional[str] = Header(None)) -> dict:
         )
     token = authorization.split(" ")[1]
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_aud": False})
         if "system_admin" not in payload.get("roles", []):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

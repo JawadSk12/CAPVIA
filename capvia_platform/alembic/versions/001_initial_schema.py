@@ -23,11 +23,16 @@ def upgrade() -> None:
     with open(sql_path, 'r') as f:
         sql_script = f.read()
     
-    # Execute the raw SQL script block against the PostgreSQL database
+    # Execute the raw SQL script block against the PostgreSQL database.
     # Since Postgres allows multiple statements in a single execute for DDL scripts,
-    # we can run this directly.
+    # but asyncpg prepared statements do not, we use the raw asyncpg driver connection.
     connection = op.get_bind()
-    connection.execute(sa.text(sql_script))
+    if connection.dialect.name == 'postgresql' and 'asyncpg' in connection.dialect.driver:
+        from sqlalchemy.util import await_only
+        raw_asyncpg = connection.connection.driver_connection
+        await_only(raw_asyncpg.execute(sql_script))
+    else:
+        connection.execute(sa.text(sql_script))
 
 def downgrade() -> None:
     # Rollback DDL statements in order of dependency

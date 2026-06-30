@@ -4,6 +4,211 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
+/* ═══════════════════════════════════════════════════════
+   CAPVIA DESIGN SYSTEM TOKENS
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --capvia-primary:    #0D47A1;
+  --capvia-primary-light: #1565C0;
+  --capvia-primary-dark:  #0A3680;
+  --capvia-secondary:  #42A5F5;
+  --capvia-accent:     #FFC107;
+  --capvia-bg:         #FFFFFF;
+  --capvia-surface:    #F8FAFC;
+  --capvia-surface-2:  #F1F5F9;
+  --capvia-success:    #10B981;
+  --capvia-warning:    #F59E0B;
+  --capvia-danger:     #EF4444;
+  --capvia-text:       #0F172A;
+  --capvia-text-muted: #64748B;
+  --capvia-border:     #E2E8F0;
+  --capvia-radius:     12px;
+  --capvia-shadow:     0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(13,71,161,0.06);
+  --capvia-shadow-lg:  0 4px 24px rgba(13,71,161,0.12), 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* ── CAPVIA Component Classes ── */
+.capvia-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid var(--capvia-border);
+  box-shadow: var(--capvia-shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.capvia-card:hover {
+  box-shadow: var(--capvia-shadow-lg);
+}
+.capvia-btn-primary {
+  background: var(--capvia-primary);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 12px 28px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 12px rgba(13,71,161,0.28);
+}
+.capvia-btn-primary:hover:not(:disabled) {
+  background: var(--capvia-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(13,71,161,0.38);
+}
+.capvia-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.capvia-badge-success {
+  background: rgba(16,185,129,0.1);
+  color: #10B981;
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: 99px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.capvia-badge-danger {
+  background: rgba(239,68,68,0.1);
+  color: #EF4444;
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 99px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.capvia-badge-warning {
+  background: rgba(245,158,11,0.1);
+  color: #F59E0B;
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 99px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.capvia-badge-primary {
+  background: rgba(13,71,161,0.08);
+  color: #0D47A1;
+  border: 1px solid rgba(13,71,161,0.2);
+  border-radius: 99px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Recording pulse animation */
+@keyframes recPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(1.5); }
+}
+.rec-dot {
+  width: 8px; height: 8px;
+  background: #EF4444;
+  border-radius: 50%;
+  animation: recPulse 1.4s ease-in-out infinite;
+}
+
+/* Mic waveform bars */
+@keyframes micBar1 { 0%,100%{height:4px} 50%{height:16px} }
+@keyframes micBar2 { 0%,100%{height:8px} 50%{height:24px} }
+@keyframes micBar3 { 0%,100%{height:4px} 50%{height:20px} }
+.mic-bar-active .b1 { animation: micBar1 0.8s ease infinite; }
+.mic-bar-active .b2 { animation: micBar2 0.7s ease infinite 0.1s; }
+.mic-bar-active .b3 { animation: micBar3 0.9s ease infinite 0.2s; }
+
+/* AI Speaking waveform */
+@keyframes aiWave { 0%,100%{height:4px} 50%{height:12px} }
+.ai-wave span {
+  display: inline-block; width: 2px; border-radius: 2px;
+  background: rgba(255,255,255,0.9); height: 4px;
+}
+.ai-wave span:nth-child(1) { animation: aiWave 0.7s ease infinite 0.0s; }
+.ai-wave span:nth-child(2) { animation: aiWave 0.7s ease infinite 0.1s; }
+.ai-wave span:nth-child(3) { animation: aiWave 0.7s ease infinite 0.2s; }
+.ai-wave span:nth-child(4) { animation: aiWave 0.7s ease infinite 0.3s; }
+
+/* Skeleton shimmer */
+@keyframes skeletonShimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background-size: 800px 100%;
+  animation: skeletonShimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* Interview page scroll lock */
+.interview-page { overflow: hidden; }
+
+/* Confidence meter ring */
+@keyframes ringFill {
+  from { stroke-dashoffset: 251; }
+  to   { stroke-dashoffset: var(--ring-offset); }
+}
+.ring-path { animation: ringFill 1.2s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+/* AI speaking wave */
+@keyframes aiWave {
+  0%,100% { transform: scaleY(0.4); }
+  50%     { transform: scaleY(1); }
+}
+.ai-wave span {
+  display: inline-block;
+  width: 3px; height: 18px;
+  background: var(--capvia-primary);
+  border-radius: 2px;
+  animation: aiWave 1s ease-in-out infinite;
+}
+.ai-wave span:nth-child(2) { animation-delay: 0.15s; }
+.ai-wave span:nth-child(3) { animation-delay: 0.30s; }
+.ai-wave span:nth-child(4) { animation-delay: 0.15s; }
+
+/* Slide up animation */
+@keyframes slideUpIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-up { animation: slideUpIn 0.35s cubic-bezier(0.4,0,0.2,1) both; }
+.slide-up-delay-1 { animation-delay: 0.07s; }
+.slide-up-delay-2 { animation-delay: 0.14s; }
+.slide-up-delay-3 { animation-delay: 0.21s; }
+.slide-up-delay-4 { animation-delay: 0.28s; }
+
+/* Circular progress timer */
+.circular-timer {
+  transform: rotate(-90deg);
+}
+.circular-timer-track {
+  fill: none;
+  stroke: #E2E8F0;
+}
+.circular-timer-progress {
+  fill: none;
+  stroke: var(--capvia-primary);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* Face detection badge */
+@keyframes faceBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+  70%      { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+}
+.face-ok { animation: faceBadgePulse 2s infinite; }
+
+/* Toast slide in */
+@keyframes toastIn {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastOut {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(110%); opacity: 0; }
+}
+.toast-in  { animation: toastIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+.toast-out { animation: toastOut 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
+
 /* ── Keyframes ── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

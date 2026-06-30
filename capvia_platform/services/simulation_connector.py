@@ -73,8 +73,22 @@ class SimulationConnector:
                 logger.warning(f"Failed to connect to Redis. Caching will fallback to local memory. Error: {str(e)}")
         return None
 
-    def _get_auth_headers(self) -> dict:
-        token = create_system_jwt(audience="ASSESS_AI", expires_in_sec=300)
+    def _get_auth_headers(self, sim_candidate_id: Optional[int] = None) -> dict:
+        if sim_candidate_id is not None:
+            from jose import jwt
+            from datetime import datetime, timedelta
+            from capvia_platform.core.config import settings
+            
+            now = datetime.utcnow()
+            payload = {
+                "sub": str(sim_candidate_id),
+                "type": "access",
+                "exp": now + timedelta(seconds=300),
+                "iat": now
+            }
+            token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        else:
+            token = create_system_jwt(audience="ASSESS_AI", expires_in_sec=300)
         return {"Authorization": f"Bearer {token}"}
 
     async def _get_cache(self, key: str) -> Optional[Dict[str, Any]]:
@@ -115,14 +129,15 @@ class SimulationConnector:
         self,
         method: str,
         path: str,
-        json_data: Optional[dict] = None,
+        json_data = None,  # Optional[dict | list] — httpx accepts any JSON-serializable value
         params: Optional[dict] = None,
-        custom_timeout: Optional[float] = None
+        custom_timeout: Optional[float] = None,
+        sim_candidate_id: Optional[int] = None
     ) -> httpx.Response:
         self.circuit_breaker.check_request_allowed()
 
         url = f"{self.base_url}/{path.lstrip('/')}"
-        headers = self._get_auth_headers()
+        headers = self._get_auth_headers(sim_candidate_id=sim_candidate_id)
         timeout = httpx.Timeout(custom_timeout or 5.0, connect=2.0)
 
         max_retries = 3
@@ -228,17 +243,18 @@ class SimulationConnector:
         )
         return res.json()
 
-    async def get_attempt_metadata(self, attempt_id: int) -> dict:
+    async def get_attempt_metadata(self, attempt_id: int, sim_candidate_id: Optional[int] = None) -> dict:
         """
         Sequence 2.2: Fetches attempt configuration/timing parameters.
         """
         res = await self._request_with_retry(
             method="GET",
-            path=f"/attempts/{attempt_id}"
+            path=f"/attempts/{attempt_id}",
+            sim_candidate_id=sim_candidate_id
         )
         return res.json()
 
-    async def get_evaluation_report(self, attempt_id: int) -> dict:
+    async def get_evaluation_report(self, attempt_id: int, sim_candidate_id: Optional[int] = None) -> dict:
         """
         Sequence 2.2 & 3.4: Fetches AI evaluation feedback report, scores, and risk flags.
         """
@@ -250,7 +266,8 @@ class SimulationConnector:
 
         res = await self._request_with_retry(
             method="GET",
-            path=f"/attempts/{attempt_id}/report"
+            path=f"/attempts/{attempt_id}/report",
+            sim_candidate_id=sim_candidate_id
         )
         data = res.json()
         await self._set_cache(cache_key, data)
@@ -272,6 +289,121 @@ class SimulationConnector:
         )
         data = res.json()
         await self._set_cache(cache_key, data, ttl=600)  # cache rankings for 10 minutes
+        return data
+
+    async def start_attempt(self, sim_application_id: int, sim_candidate_id: int) -> dict:
+        """
+        Starts a simulation attempt for the given simulation-internal application ID.
+        Calls POST /api/v1/applications/{sim_application_id}/start-simulation on the
+        simulation engine. Returns the attempt data including attempt_id, blueprint, etc.
+        """
+        res = await self._request_with_retry(
+            method="POST",
+            path=f"/applications/{sim_application_id}/start-simulation",
+            custom_timeout=10.0,
+            sim_candidate_id=sim_candidate_id
+        )
+        return res.json()
+
+    async def get_attempt(self, attempt_id: int, sim_candidate_id: int) -> dict:
+        """
+        Fetches attempt configuration and current state from the simulation engine.
+        Proxies GET /api/v1/attempts/{attempt_id}.
+        """
+        res = await self._request_with_retry(
+            method="GET",
+            path=f"/attempts/{attempt_id}",
+            custom_timeout=10.0,
+            sim_candidate_id=sim_candidate_id
+        )
+        return res.json()
+
+    async def submit_answer(self, attempt_id: int, sim_candidate_id: int, data: dict) -> dict:
+        """
+        Submits an answer for a specific task in the simulation attempt.
+        Proxies POST /api/v1/attempts/{attempt_id}/answer.
+        """
+        res = await self._request_with_retry(
+            method="POST",
+            path=f"/attempts/{attempt_id}/answer",
+            json_data=data,
+            custom_timeout=10.0,
+            sim_candidate_id=sim_candidate_id
+        )
+        return res.json()
+
+    async def complete_round(self, attempt_id: int, sim_candidate_id: int, round_number: int) -> dict:
+        """
+        Marks a simulation round as complete.
+        Proxies POST /api/v1/attempts/{attempt_id}/complete-round.
+        """
+        res = await self._request_with_retry(
+            method="POST",
+            path=f"/attempts/{attempt_id}/complete-round",
+            params={"round_number": round_number},
+            custom_timeout=10.0,
+            sim_candidate_id=sim_candidate_id
+        )
+        return res.json()
+
+    async def submit_attempt(self, attempt_id: int, sim_candidate_id: int) -> dict:
+        """
+        Submits the completed simulation attempt for final AI evaluation.
+        Proxies POST /api/v1/attempts/{attempt_id}/submit.
+        """
+        res = await self._request_with_retry(
+            method="POST",
+            path=f"/attempts/{attempt_id}/submit",
+            custom_timeout=30.0,  # AI evaluation can take longer
+            sim_candidate_id=sim_candidate_id
+        )
+        return res.json()
+
+    async def log_events(self, attempt_id: int, sim_candidate_id: int, events: list) -> dict:
+        """
+        Sends anti-cheat behavior events to the simulation engine.
+        Proxies POST /api/v1/attempts/{attempt_id}/events.
+        """
+        res = await self._request_with_retry(
+            method="POST",
+            path=f"/attempts/{attempt_id}/events",
+            json_data=events,
+            custom_timeout=5.0,
+            sim_candidate_id=sim_candidate_id
+        )
+        return res.json()
+
+    async def get_report(self, attempt_id: int, sim_candidate_id: int) -> dict:
+        """
+        Fetches the final AI evaluation report for a completed attempt.
+        Proxies GET /api/v1/attempts/{attempt_id}/report.
+        """
+        res = await self._request_with_retry(
+            method="GET",
+            path=f"/attempts/{attempt_id}/report",
+            custom_timeout=15.0,
+            sim_candidate_id=sim_candidate_id
+        )
+        return res.json()
+
+    async def get_internship_blueprint(self, internship_id: int) -> dict:
+        """
+        Fetches the simulation blueprint for an internship.
+        Proxies GET /api/v1/internships/{internship_id}/blueprint.
+        """
+        cache_key = f"simulation_blueprint:{internship_id}"
+        cached = await self._get_cache(cache_key)
+        if cached:
+            logger.info(f"Cache hit for simulation blueprint: {cache_key}")
+            return cached
+
+        res = await self._request_with_retry(
+            method="GET",
+            path=f"/internships/{internship_id}/blueprint",
+            custom_timeout=10.0
+        )
+        data = res.json()
+        await self._set_cache(cache_key, data, ttl=3600)
         return data
 
 

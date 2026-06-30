@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
 from sqlalchemy import select, and_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from capvia_platform.models.models import ATSResult, DNAProfile
 
@@ -28,36 +29,55 @@ class ATSRepository:
         fraud_flags: list = None,
         raw_analysis: dict = None
     ) -> ATSResult:
-        ats_result = await self.get_ats_result(session, application_id)
-        if not ats_result:
-            ats_result = ATSResult(
-                application_id=application_id,
-                overall_score=overall_score,
-                score_band=score_band,
-                detected_role=detected_role,
-                role_confidence=role_confidence,
-                matched_skills=matched_skills or [],
-                missing_skills=missing_skills or [],
-                is_suspicious=is_suspicious,
-                fraud_probability=fraud_probability,
-                fraud_flags=fraud_flags or [],
-                raw_analysis=raw_analysis or {}
+        """
+        Atomically insert or update an ATSResult row using PostgreSQL ON CONFLICT DO UPDATE.
+        This is race-condition safe — concurrent callers will never produce a UniqueViolationError.
+        """
+        import json as _json
+        new_id = uuid.uuid4()
+        values = {
+            "id": new_id,
+            "application_id": application_id,
+            "overall_score": overall_score,
+            "score_band": score_band,
+            "detected_role": detected_role,
+            "role_confidence": role_confidence,
+            "matched_skills": matched_skills or [],
+            "missing_skills": missing_skills or [],
+            "is_suspicious": is_suspicious,
+            "fraud_probability": fraud_probability,
+            "fraud_flags": fraud_flags or [],
+            "raw_analysis": raw_analysis or {},
+            "deleted_at": None,
+        }
+        stmt = (
+            pg_insert(ATSResult)
+            .values(**values)
+            .on_conflict_do_update(
+                index_elements=["application_id"],
+                set_={
+                    "overall_score": overall_score,
+                    "score_band": score_band,
+                    "detected_role": detected_role,
+                    "role_confidence": role_confidence,
+                    "matched_skills": matched_skills or [],
+                    "missing_skills": missing_skills or [],
+                    "is_suspicious": is_suspicious,
+                    "fraud_probability": fraud_probability,
+                    "fraud_flags": fraud_flags or [],
+                    "raw_analysis": raw_analysis or {},
+                    "deleted_at": None,
+                },
             )
-            session.add(ats_result)
-        else:
-            ats_result.overall_score = overall_score
-            ats_result.score_band = score_band
-            ats_result.detected_role = detected_role
-            ats_result.role_confidence = role_confidence
-            ats_result.matched_skills = matched_skills or []
-            ats_result.missing_skills = missing_skills or []
-            ats_result.is_suspicious = is_suspicious
-            ats_result.fraud_probability = fraud_probability
-            ats_result.fraud_flags = fraud_flags or []
-            ats_result.raw_analysis = raw_analysis or {}
-            
+            .returning(ATSResult)
+        )
+        result = await session.execute(stmt)
         await session.flush()
-        return ats_result
+        # Fetch the upserted row via normal ORM to get a fully-mapped instance
+        fetch_stmt = select(ATSResult).where(ATSResult.application_id == application_id)
+        fetch_result = await session.execute(fetch_stmt)
+        return fetch_result.scalar_one()
+
 
     async def get_dna_profile(self, session: AsyncSession, application_id: uuid.UUID) -> Optional[DNAProfile]:
         stmt = select(DNAProfile).where(and_(DNAProfile.application_id == application_id, DNAProfile.deleted_at == None))

@@ -421,6 +421,28 @@ export const reportsApi = {
     const response = await apiClient.get(`/reports/${applicationId}`);
     return response.data;
   },
+  list: async () => {
+    const appsRes = await apiClient.get<any[]>('/applications');
+    const eligibleApps = appsRes.data.filter(app =>
+      ['EVALUATED', 'SHORTLISTED', 'HIRED', 'REJECTED'].includes(app.status)
+    );
+    const reportPromises = eligibleApps.map(async (app) => {
+      try {
+        const reportData = await apiClient.get(`/reports/${app.id}`);
+        return {
+          id: reportData.data.id || `report-${app.id}`,
+          application_id: app.id,
+          candidate_name: app.candidate?.full_name || 'Candidate',
+          internship_title: app.vacancy_title || app.vacancy?.title || 'General Vacancy',
+          created_at: reportData.data.created_at || app.updated_at || app.created_at,
+        };
+      } catch (err) {
+        return null;
+      }
+    });
+    const results = await Promise.all(reportPromises);
+    return results.filter((r): r is NonNullable<typeof r> => r !== null);
+  },
   downloadUrl: (applicationId: string) => {
     const baseURL = apiClient.defaults.baseURL || 'http://localhost:8000/api/v1';
     return `${baseURL}/reports/${applicationId}/download`;

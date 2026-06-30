@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from capvia_platform.models.models import Application, ApplicationStatus, StageName, RiskLevel
+from capvia_platform.models.models import Application, ApplicationStatus, StageName, RiskLevel, CandidateMapping
 from capvia_platform.services.simulation_connector import simulation_connector
 from capvia_platform.repositories.simulation_repository import SimulationRepository
 from capvia_platform.services.services import MappingService, RecruitmentProgressService
@@ -52,8 +52,16 @@ async def handle_simulation_submitted_webhook(db: AsyncSession, data: dict):
     risk = RiskLevel[risk_str] if risk_str in RiskLevel.__members__ else RiskLevel.LOW
 
     # 3. Fetch detailed evaluation report from AssessAI
+    sim_candidate_id = None
     try:
-        detailed_report = await simulation_connector.get_evaluation_report(attempt_id)
+        cand_map_stmt = select(CandidateMapping.simulation_candidate_id).where(CandidateMapping.capvia_candidate_uuid == app.candidate_id)
+        cand_map_res = await db.execute(cand_map_stmt)
+        sim_candidate_id = cand_map_res.scalar_one_or_none()
+    except Exception as map_err:
+        logger.warning(f"Could not resolve simulation candidate mapping: {map_err}")
+
+    try:
+        detailed_report = await simulation_connector.get_evaluation_report(attempt_id, sim_candidate_id=sim_candidate_id)
     except Exception as e:
         logger.warning(f"Failed to fetch detailed report for attempt {attempt_id}: {str(e)}. Using fallback baseline.")
         detailed_report = {

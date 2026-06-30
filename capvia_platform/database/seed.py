@@ -32,11 +32,13 @@ async def seed_data():
         await session.flush()
         print(f"Seeded Company: {company.name} ({company.id})")
 
+        from capvia_platform.utils.auth import hash_password
+
         # 2. Users (Candidate and Recruiter)
         candidate = User(
             id=uuid.uuid4(),
             email="candidate@example.com",
-            password_hash="pbkdf2:sha256:260000$randomhash123",
+            password_hash=hash_password("password123"),
             full_name="Arjun Kumar",
             role=UserRole.STUDENT,
             is_active=True
@@ -44,7 +46,7 @@ async def seed_data():
         recruiter = User(
             id=uuid.uuid4(),
             email="hr@capvia.ai",
-            password_hash="pbkdf2:sha256:260000$recruiterhash456",
+            password_hash=hash_password("password123"),
             full_name="Jane Smith",
             role=UserRole.HR,
             is_active=True
