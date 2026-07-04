@@ -65,10 +65,10 @@ Follow this step-by-step guide to provision database services, set up hosting in
 Log in to [Render](https://render.com/) or [Koyeb](https://www.koyeb.com/) using your GitHub account. Link your repository `JawadSk12/CAPVIA` and create 4 free Web Services.
 
 ### 1. CAPVIA Gateway (api.capvia.in)
-- **Root Directory**: `capvia_platform`
+- **Root Directory**: `.` (Root of the repository)
 - **Runtime**: `Python`
-- **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Build Command**: `pip install -r capvia_platform/requirements.txt`
+- **Start Command**: `PYTHONPATH=. uvicorn capvia_platform.main:app --host 0.0.0.0 --port $PORT`
 - **Environment Variables**:
   - `DATABASE_URL` (Neon Postgres pooled URL)
   - `REDIS_URL` (Upstash connection string starting with `rediss://`)
@@ -86,7 +86,7 @@ Log in to [Render](https://render.com/) or [Koyeb](https://www.koyeb.com/) using
 - **Root Directory**: `ats_resume/backend`
 - **Runtime**: `Python`
 - **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Start Command**: `PYTHONPATH=".:../ai_engine" uvicorn main:app --host 0.0.0.0 --port $PORT`
 - **Environment Variables**:
   - `DATABASE_URL` (Neon Postgres pooled URL)
   - `MONGO_URL` & `MONGO_DB_NAME` (MongoDB connection details)
@@ -100,7 +100,7 @@ Log in to [Render](https://render.com/) or [Koyeb](https://www.koyeb.com/) using
 - **Root Directory**: `ai_simulation/backend`
 - **Runtime**: `Python`
 - **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Start Command**: `PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - **Environment Variables**:
   - `POSTGRES_SERVER`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` (Neon connection details)
   - `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB` = `0` (Upstash details)
@@ -112,7 +112,7 @@ Log in to [Render](https://render.com/) or [Koyeb](https://www.koyeb.com/) using
 - **Root Directory**: `ai_interview`
 - **Runtime**: `Python`
 - **Build Command**: `pip install -r requirements_ai.txt`
-- **Start Command**: `python evaluation_server.py`
+- **Start Command**: `PYTHONPATH=. python evaluation_server.py`
 - **Environment Variables**:
   - `ENVIRONMENT` = `production`
 
