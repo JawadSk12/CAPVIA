@@ -65,10 +65,10 @@ Follow this step-by-step guide to provision database services, set up hosting in
 Log in to [Render](https://render.com/) or [Koyeb](https://www.koyeb.com/) using your GitHub account. Link your repository `JawadSk12/CAPVIA` and create 4 free Web Services.
 
 ### 1. CAPVIA Gateway (api.capvia.in)
-- **Root Directory**: `.` (Root of the repository)
+- **Root Directory**: `capvia_platform`
 - **Runtime**: `Python`
-- **Build Command**: `pip install -r capvia_platform/requirements.txt`
-- **Start Command**: `PYTHONPATH=. uvicorn capvia_platform.main:app --host 0.0.0.0 --port $PORT`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `PYTHONPATH=.. uvicorn main:app --host 0.0.0.0 --port $PORT`
 - **Environment Variables**:
   - `DATABASE_URL` (Neon Postgres pooled URL)
   - `REDIS_URL` (Upstash connection string starting with `rediss://`)
