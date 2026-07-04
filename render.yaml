@@ -84,7 +84,6 @@ services:
     startCommand: npm run start
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        sync: false
         value: https://ats-api.capvia.in
       - key: NEXT_PUBLIC_APP_NAME
         value: "CAPVIA ATS"
@@ -100,7 +99,6 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        sync: false
         value: https://simulation-api.capvia.in/api/v1
 
 envVarGroups:
