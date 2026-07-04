@@ -1,10 +1,40 @@
 # CAPVIA Production Deployment Guide (Domain: capvia.in)
 
-Follow this step-by-step guide to provision database services, set up hosting in Railway and Vercel, and configure DNS records in GoDaddy for a fully working production deployment.
+Choose one of the two options below to deploy the entire CAPVIA platform:
+
+* **[OPTION A: 1-Click VPS Script (Easiest & Highly Recommended)](#option-a-1-click-vps-deployment)**: Run all 7 services on a single $4/month Linux server (DigitalOcean, Vultr, etc.) with automatic SSL certificates, single IP mapping, and zero dashboard setup complexity.
+* **[OPTION B: Vercel & Render (Multi-Service Multi-Dashboard)](#option-b-vercel--render-multi-service-deployment)**: Distribute services across multiple serverless and container hosts.
 
 ---
 
-## Step 1: Provision Cloud Databases & Storage
+## OPTION A: 1-Click VPS Deployment
+
+This is the easiest deployment path. You do not need to configure any root directories, individual platform build paths, or port bindings manually.
+
+### 1. Configure GoDaddy DNS
+Point all subdomains and your main domain to your VPS IP address:
+* Add an **A** record with host `@` pointing to your VPS IP.
+* Add an **A** or **CNAME** record with host `*` pointing to your VPS IP (enables wildcards for all subdomains).
+
+### 2. Configure Your Environment File
+1. Create a `.env` file in the root of the repository.
+2. Copy the contents of `capvia_platform/.env.example` into it.
+3. Fill in your real API credentials (e.g. Resend Key, OpenAI Key, Neon DB connection string, Supabase keys).
+
+### 3. Run the Automated Script on Your VPS
+SSH into your Ubuntu server and run the following command:
+```bash
+sudo bash setup_vps.sh
+```
+*The script will automatically install Nginx, Node.js, Python 3.12, PM2, and Certbot, deploy all 7 apps, bind their ports, configure Nginx reverse proxying, and automatically obtain SSL certificates for `capvia.in` and all subdomains.*
+
+---
+
+## OPTION B: Vercel & Render (Multi-Service)
+
+If you prefer using distributed serverless/container hosts, follow the steps below:
+
+### Step 1: Provision Cloud Databases & Storage
 
 ### 1. Neon PostgreSQL (Primary Relational Store)
 1. Go to [https://neon.tech](https://neon.tech) and log in.
