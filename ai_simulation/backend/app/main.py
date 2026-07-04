@@ -64,12 +64,18 @@ app = FastAPI(
 # MIDDLEWARE
 # ========================================
 
-# CORS Middleware — allow all local dev origins
+# CORS Middleware — allow all local dev and production origins
 _allowed_origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
+_prod_origins = [
+    "https://capvia.in",
+    "https://www.capvia.in",
+    "https://ats.capvia.in",
+    "https://simulation.capvia.in",
+]
 _dev_origins = [f"http://localhost:{p}" for p in range(3000, 3010)] + \
                [f"http://127.0.0.1:{p}" for p in range(3000, 3010)] + \
                ["http://localhost:5173", "http://127.0.0.1:5173"]
-_cors_origins = list(set(_allowed_origins + _dev_origins))
+_cors_origins = list(set(_allowed_origins + _prod_origins + _dev_origins))
 
 app.add_middleware(
     CORSMiddleware,

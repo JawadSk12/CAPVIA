@@ -180,29 +180,68 @@ async def process_ats_stage(application_id: uuid.UUID):
                 pass
         return
 
-    # ── Phase 4: Poll resume processing status (up to 20s) ──────────────────────
-    for attempt in range(20):
-        try:
-            st_res = await ats_connector.get_resume_status(str(resume_uuid))
-            status_val = st_res.get("status", "")
-            logger.info(f"Resume {resume_uuid} status: {status_val} (attempt {attempt+1})")
-            if status_val in ("DONE", "COMPLETED", "READY"):
-                logger.info(f"Resume {resume_uuid} processing complete.")
-                break
-        except Exception as status_err:
-            logger.warning(f"Error polling resume status: {status_err}")
-        await asyncio.sleep(1)
+    # ── Phase 4: Initiate non-blocking poll & compare pipeline ─────────────────
+    asyncio.create_task(
+        poll_resume_and_compare(
+            application_id=application_id,
+            resume_uuid=resume_uuid,
+            vacancy_id=vacancy_id,
+            attempt=0
+        )
+    )
 
-    # ── Phase 5: Trigger ATS comparison ──────────────────────────────────────────
+
+async def poll_resume_and_compare(
+    application_id: uuid.UUID,
+    resume_uuid: uuid.UUID,
+    vacancy_id: uuid.UUID,
+    attempt: int = 0
+):
+    """
+    Poller task with non-blocking rescheduled execution & exponential backoff.
+    """
+    if attempt >= 20:
+        logger.warning(f"Exceeded maximum polling attempts for Resume: {resume_uuid}. Rescheduling fallback check.")
+        asyncio.create_task(deferred_fallback_check(application_id, resume_uuid, vacancy_id))
+        return
+
     try:
-        compare_res = await ats_connector.compare_resume(str(vacancy_id), str(resume_uuid))
-        logger.info(f"ATS comparison triggered for Application {application_id}. Response: {compare_res}")
-    except Exception as comp_err:
-        logger.warning(f"ATS comparison call returned an error (may still process): {comp_err}")
+        st_res = await ats_connector.get_resume_status(str(resume_uuid))
+        status_val = st_res.get("status", "")
+        logger.info(f"Resume {resume_uuid} status: {status_val} (attempt {attempt+1})")
+        if status_val in ("DONE", "COMPLETED", "READY"):
+            logger.info(f"Resume {resume_uuid} processing complete. Triggering ATS comparison.")
+            try:
+                compare_res = await ats_connector.compare_resume(str(vacancy_id), str(resume_uuid))
+                logger.info(f"ATS comparison triggered for Application {application_id}. Response: {compare_res}")
+            except Exception as comp_err:
+                logger.warning(f"ATS comparison call returned an error (may still process): {comp_err}")
+            
+            # Schedule fallback check deferred by 5 seconds to wait for worker callback
+            asyncio.create_task(deferred_fallback_check(application_id, resume_uuid, vacancy_id))
+            return
+    except Exception as status_err:
+        logger.warning(f"Error polling resume status: {status_err}")
 
-    # ── Phase 6: Wait briefly for ATS Celery worker callback, then fallback ───────
-    # The ATS Engine may call back our /webhooks/ats endpoint automatically.
-    # We wait up to 10s for that, then handle it ourselves if not done.
+    # Reschedule check with exponential backoff delay: min(1.5^attempt, 8.0) seconds
+    delay = min(1.5 ** attempt, 8.0)
+    
+    async def rescheduled_poll():
+        await asyncio.sleep(delay)
+        await poll_resume_and_compare(application_id, resume_uuid, vacancy_id, attempt + 1)
+        
+    asyncio.create_task(rescheduled_poll())
+
+
+async def deferred_fallback_check(
+    application_id: uuid.UUID,
+    resume_uuid: uuid.UUID,
+    vacancy_id: uuid.UUID
+):
+    """
+    Deferred fallback webhook executor. Runs 5s after compare is triggered to handle cases
+    where the external ATS Celery worker failed to trigger our webhook endpoint.
+    """
     await asyncio.sleep(5)
 
     async with get_db_session() as session:

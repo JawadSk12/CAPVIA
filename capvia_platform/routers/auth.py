@@ -2,7 +2,7 @@ import uuid
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, Request, Header
+from fastapi import APIRouter, Depends, Request, Header, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 import redis.asyncio as aioredis
@@ -19,12 +19,14 @@ from capvia_platform.utils.auth import (
     create_access_token, create_refresh_token, decode_token
 )
 from capvia_platform.core.exceptions import BaseAPIException, AuthorizationException
+from capvia_platform.middleware.rate_limit import RateLimiter
 
 router = APIRouter(prefix="/auth")
 
-@router.post("/register", tags=["Auth"])
+@router.post("/register", tags=["Auth"], dependencies=[Depends(RateLimiter(limit=5, window_sec=60))])
 async def register_user(
     payload: UserRegisterRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis)
 ):
@@ -40,8 +42,8 @@ async def register_user(
         
     # Prevent privilege escalation
     target_role = payload.role.lower() if payload.role else "candidate"
-    if target_role == "admin":
-        raise AuthorizationException("Only administrators can provision admin accounts")
+    if target_role in ("admin", "hr"):
+        raise AuthorizationException("Only administrators can provision admin or HR accounts")
         
     db_role = UserRole.HR if target_role == "hr" else UserRole.STUDENT
     
@@ -115,6 +117,15 @@ async def register_user(
     )
     db.add(session_record)
     
+    response.set_cookie(
+        key="capvia_refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 3600
+    )
+    
     return {
         "success": True, 
         "message": "User registered successfully. Please verify your email.",
@@ -132,10 +143,11 @@ async def register_user(
         }
     }
 
-@router.post("/login", response_model=TokenResponse, tags=["Auth"])
+@router.post("/login", response_model=TokenResponse, tags=["Auth"], dependencies=[Depends(RateLimiter(limit=10, window_sec=60))])
 async def login_user(
     payload: UserLoginRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -193,6 +205,15 @@ async def login_user(
     )
     db.add(audit)
     
+    response.set_cookie(
+        key="capvia_refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 3600
+    )
+    
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -203,16 +224,23 @@ async def login_user(
 @router.post("/logout", tags=["Auth"])
 async def logout_user(
     payload: RefreshTokenRequest,
+    request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Logs out a user and revokes the session refresh token.
     """
-    ref_hash = hash_token(payload.refresh_token)
+    refresh_token = (payload.refresh_token if payload else None) or request.cookies.get("capvia_refresh_token")
+    if not refresh_token:
+        response.delete_cookie(key="capvia_refresh_token")
+        return {"success": True, "message": "Logged out successfully"}
+        
+    ref_hash = hash_token(refresh_token)
     
     # Decode to fetch user_id for logging
     try:
-        token_claims = decode_token(payload.refresh_token, expected_type="refresh")
+        token_claims = decode_token(refresh_token, expected_type="refresh")
         user_uuid = uuid.UUID(token_claims.get("sub"))
     except Exception:
         user_uuid = None
@@ -229,12 +257,14 @@ async def logout_user(
         )
         db.add(audit)
         
+    response.delete_cookie(key="capvia_refresh_token")
     return {"success": True, "message": "Logged out successfully"}
 
-@router.post("/refresh", response_model=TokenResponse, tags=["Auth"])
+@router.post("/refresh", response_model=TokenResponse, tags=["Auth"], dependencies=[Depends(RateLimiter(limit=20, window_sec=60))])
 async def refresh_tokens(
     payload: RefreshTokenRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -242,12 +272,16 @@ async def refresh_tokens(
     Detects token replay/reuse attacks and immediately revokes all family sessions if found.
     """
     # 1. Decode refresh token
-    claims = decode_token(payload.refresh_token, expected_type="refresh")
+    refresh_token = request.cookies.get("capvia_refresh_token") or (payload.refresh_token if payload else None)
+    if not refresh_token:
+        raise AuthorizationException("Session expired or missing refresh token")
+
+    claims = decode_token(refresh_token, expected_type="refresh")
     user_id_str = claims.get("sub")
     user_uuid = uuid.UUID(user_id_str)
     
     # 2. Hash refresh token
-    old_hash = hash_token(payload.refresh_token)
+    old_hash = hash_token(refresh_token)
     
     # 3. Retrieve session
     stmt = select(UserSession).where(UserSession.refresh_token_hash == old_hash)
@@ -297,6 +331,15 @@ async def refresh_tokens(
     )
     db.add(new_session)
     
+    response.set_cookie(
+        key="capvia_refresh_token",
+        value=new_refresh,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 3600
+    )
+    
     return TokenResponse(
         access_token=new_access,
         refresh_token=new_refresh,
@@ -304,7 +347,7 @@ async def refresh_tokens(
         full_name=user.full_name
     )
 
-@router.post("/forgot-password", tags=["Auth"])
+@router.post("/forgot-password", tags=["Auth"], dependencies=[Depends(RateLimiter(limit=3, window_sec=60))])
 async def forgot_password(
     payload: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -344,7 +387,7 @@ async def forgot_password(
         "simulated_token": reset_token
     }
 
-@router.post("/reset-password", tags=["Auth"])
+@router.post("/reset-password", tags=["Auth"], dependencies=[Depends(RateLimiter(limit=3, window_sec=60))])
 async def reset_password(
     payload: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -386,7 +429,7 @@ async def reset_password(
     
     return {"success": True, "message": "Password reset successfully. You can now login with your new credentials."}
 
-@router.post("/verify-email", tags=["Auth"])
+@router.post("/verify-email", tags=["Auth"], dependencies=[Depends(RateLimiter(limit=5, window_sec=60))])
 async def verify_email(
     payload: VerifyEmailRequest,
     db: AsyncSession = Depends(get_db),

@@ -1,16 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import path from 'path';
+import { jwtVerify } from 'jose';
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Verify candidate authorization header from the gateway token (just basic auth check)
+    // 1. Verify candidate authorization header and cryptographically validate JWT signature
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized: Bearer token required' }, { status: 401 });
     }
+    const token = authHeader.substring(7);
 
-    // 2. Parse the multipart form data
+    try {
+      const secret = new TextEncoder().encode(process.env.SECRET_KEY || 'test_secret_for_interview_integration');
+      const { payload } = await jwtVerify(token, secret, {
+        algorithms: ['HS256'],
+      });
+
+      if (!payload.sub) {
+        return NextResponse.json({ error: 'Forbidden: Invalid token claims' }, { status: 403 });
+      }
+    } catch (jwtErr: any) {
+      console.error('[resume-upload proxy] JWT validation failed:', jwtErr.message);
+      return NextResponse.json({ error: 'Unauthorized: Invalid or expired token signature' }, { status: 401 });
+    }
+
+    // 2. Parse and validate the multipart form data
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     if (!file) {
@@ -26,34 +43,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 400 });
     }
 
-    // 3. Define target directory and unique filename
+    // 3. Buffer array verification: Magic bytes & PDF structural integrity check
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const pdfHeader = buffer.toString('utf-8', 0, 5);
+    const pdfBodyString = buffer.toString('utf-8');
+    
+    if (pdfHeader !== '%PDF-' || !pdfBodyString.includes('%%EOF')) {
+      return NextResponse.json({ error: 'Invalid file format: Corrupted or malformed PDF structure' }, { status: 400 });
+    }
+
+    // 4. Define target directory and unique filename
     const uniqueId = crypto.randomUUID();
     const filename = `${uniqueId}.pdf`;
-    
-    // We are at frontend/src/app/api/resume/upload/route.ts
-    // The target is frontend/public/resumes
     const targetDir = path.join(process.cwd(), 'public', 'resumes');
     
-    // Ensure the directory exists
+    // Ensure the directory exists asynchronously or checks if exists
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
     const filePath = path.join(targetDir, filename);
 
-    // 4. Save the file to the public directory
-    const buffer = Buffer.from(await file.arrayBuffer());
-    fs.writeFileSync(filePath, buffer);
+    // 5. Save the file asynchronously using promises to keep Next.js event loop non-blocking
+    await fsPromises.writeFile(filePath, buffer);
 
-    // 5. Construct and return the public URL
-    // Use host header to dynamically determine the host/port
+    // 6. Construct and return the public URL
     const host = req.headers.get('host') || 'localhost:3000';
     const protocol = req.nextUrl.protocol || 'http:';
     const fileUrl = `${protocol}//${host}/resumes/${filename}`;
 
-    console.log('[resume-upload proxy] Saved PDF locally:', filePath, '->', fileUrl);
+    console.log('[resume-upload proxy] Saved PDF asynchronously:', filePath, '->', fileUrl);
 
-    // Return the response format expected by ApplyButton
     return NextResponse.json({
       resume_id: uniqueId,
       resume_url: fileUrl,

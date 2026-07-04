@@ -76,30 +76,32 @@ async def register_candidate_for_simulation_task(application_id: uuid.UUID):
 
         # 3. Register candidate in AssessAI
         try:
-            logger.info(f"Registering candidate '{app.candidate.email}' in AssessAI for internship {sim_internship_id}")
-            reg_res = await simulation_connector.register_candidate(
-                internship_id=sim_internship_id,
-                external_application_uuid=str(application_id),
-                external_candidate_uuid=str(app.candidate_id),
-                email=app.candidate.email,
-                name=app.candidate.full_name or app.candidate.email,
-                skills=app.vacancy.required_skills or []
-            )
-
-            sim_cand_id = reg_res.get("simulation_candidate_id")
-            sim_app_id = reg_res.get("simulation_application_id")
-
-            if not sim_cand_id or not sim_app_id:
-                raise ValueError(f"Invalid registration response: {reg_res}")
-
-            # Save mappings
-            cand_map = await MappingService.get_or_create_candidate_mapping(session, app.candidate_id)
-            cand_map.simulation_candidate_id = sim_cand_id
-
             app_map = await MappingService.get_or_create_application_mapping(session, application_id)
-            app_map.simulation_application_id = sim_app_id
+            if app_map.simulation_application_id:
+                logger.info(f"Candidate already registered in AssessAI: {app_map.simulation_application_id}. Skipping API call.")
+            else:
+                logger.info(f"Registering candidate '{app.candidate.email}' in AssessAI for internship {sim_internship_id}")
+                reg_res = await simulation_connector.register_candidate(
+                    internship_id=sim_internship_id,
+                    external_application_uuid=str(application_id),
+                    external_candidate_uuid=str(app.candidate_id),
+                    email=app.candidate.email,
+                    name=app.candidate.full_name or app.candidate.email,
+                    skills=app.vacancy.required_skills or []
+                )
 
-            await session.flush()
+                sim_cand_id = reg_res.get("simulation_candidate_id")
+                sim_app_id = reg_res.get("simulation_application_id")
+
+                if not sim_cand_id or not sim_app_id:
+                    raise ValueError(f"Invalid registration response: {reg_res}")
+
+                # Save mappings
+                cand_map = await MappingService.get_or_create_candidate_mapping(session, app.candidate_id)
+                cand_map.simulation_candidate_id = sim_cand_id
+                app_map.simulation_application_id = sim_app_id
+
+                await session.flush()
 
         except Exception as e:
             logger.error(f"Failed to register candidate in AssessAI: {str(e)}")

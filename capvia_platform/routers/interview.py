@@ -22,6 +22,7 @@ from capvia_platform.models.models import (
 )
 from capvia_platform.core.config import settings
 from capvia_platform.core.exceptions import ResourceNotFoundException, BaseAPIException
+from capvia_platform.middleware.rate_limit import RateLimiter
 from capvia_platform.repositories.interview_repository import InterviewRepository
 from capvia_platform.tasks.interview_tasks import process_interview_evaluation_task
 
@@ -48,7 +49,7 @@ def _generate_default_questions(job_role: str, skills: List[str]) -> List[str]:
         f"Imagine you are in a team meeting and there is a conflict about technical design. How do you resolve it behaviourally?"
     ]
 
-@router.post("/interview/start", response_model=StartInterviewResponse, tags=["Interview"])
+@router.post("/interview/start", response_model=StartInterviewResponse, tags=["Interview"], dependencies=[Depends(RateLimiter(limit=3, window_sec=60))])
 async def start_interview(
     payload: StartInterviewRequest,
     system_claims: dict = Depends(get_system_auth),
@@ -110,7 +111,7 @@ async def start_interview(
         expires_at=datetime.utcnow() + timedelta(hours=2)
     )
 
-@router.post("/interview/answer", response_model=SaveInterviewAnswerResponse, tags=["Interview"])
+@router.post("/interview/answer", response_model=SaveInterviewAnswerResponse, tags=["Interview"], dependencies=[Depends(RateLimiter(limit=30, window_sec=60))])
 async def save_interview_answer(
     payload: SaveInterviewAnswerRequest,
     current_user: User = Depends(get_current_user),

@@ -26,7 +26,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: (accessToken, refreshToken, user) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('capvia_access_token', accessToken);
-      localStorage.setItem('capvia_refresh_token', refreshToken);
       localStorage.setItem('capvia_user', JSON.stringify(user));
     }
     set({ accessToken, refreshToken, user, isAuthenticated: true });
@@ -35,7 +34,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('capvia_access_token');
-      localStorage.removeItem('capvia_refresh_token');
       localStorage.removeItem('capvia_user');
     }
     set({ accessToken: null, refreshToken: null, user: null, isAuthenticated: false });
@@ -44,17 +42,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: () => {
     if (typeof window !== 'undefined') {
       const accessToken = localStorage.getItem('capvia_access_token');
-      const refreshToken = localStorage.getItem('capvia_refresh_token');
       const userStr = localStorage.getItem('capvia_user');
       
-      if (accessToken && refreshToken && userStr) {
+      if (accessToken && userStr) {
         try {
           const user = JSON.parse(userStr) as AuthUser;
-          set({ accessToken, refreshToken, user, isAuthenticated: true });
+          set({ accessToken, refreshToken: null, user, isAuthenticated: true });
         } catch (e) {
           // Clear corrupt storage
           localStorage.removeItem('capvia_access_token');
-          localStorage.removeItem('capvia_refresh_token');
           localStorage.removeItem('capvia_user');
         }
       }

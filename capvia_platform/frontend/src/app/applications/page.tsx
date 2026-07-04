@@ -7,27 +7,25 @@ import { applicationApi, notificationApi } from '../../services/api';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { UnifiedLayout } from '@/features/shared/UnifiedLayout';
 import { 
-  CheckCircle2, AlertTriangle, RefreshCw, FileText, Code2, 
-  Video, ChevronRight, Inbox, Eye, ArrowRight, User, AlertCircle, 
-  MapPin, Briefcase, Bell, Check, TrendingUp, Sparkles, X, Award
+  RefreshCw, ChevronRight, Inbox, MapPin, Briefcase, Bell, Check, TrendingUp, Award, AlertCircle
 } from 'lucide-react';
 
-const STATUS_META: Record<string, { color: string; bg: string; border: string; icon: string; label: string }> = {
-  APPLIED:                  { color: 'text-blue-700', bg: 'bg-blue-50/80', border: 'border-blue-100', icon: '📨', label: 'Applied' },
-  ATS_PENDING:              { color: 'text-purple-700', bg: 'bg-purple-50/80', border: 'border-purple-100', icon: '🤖', label: 'Resume Review' },
-  ATS_COMPLETED:            { color: 'text-indigo-700', bg: 'bg-indigo-50/80', border: 'border-indigo-100', icon: '✅', label: 'Resume Screened' },
-  SIMULATION_INVITED:       { color: 'text-pink-700', bg: 'bg-pink-50/80', border: 'border-pink-100', icon: '📩', label: 'Simulation Invited' },
-  SIMULATION_IN_PROGRESS:   { color: 'text-amber-700', bg: 'bg-amber-50/80', border: 'border-amber-100 animate-pulse', icon: '🎯', label: 'Simulation Active' },
-  SIMULATION_COMPLETED:     { color: 'text-teal-700', bg: 'bg-teal-50/80', border: 'border-teal-100', icon: '🎯', label: 'Simulation Done' },
-  INTERVIEW_INVITED:        { color: 'text-orange-700', bg: 'bg-orange-50/80', border: 'border-orange-100', icon: '📩', label: 'Interview Invited' },
-  INTERVIEW_IN_PROGRESS:    { color: 'text-amber-700', bg: 'bg-amber-50/80', border: 'border-amber-100 animate-pulse', icon: '🎤', label: 'Interview Active' },
-  INTERVIEW_COMPLETED:      { color: 'text-green-700', bg: 'bg-green-50/80', border: 'border-green-100', icon: '🎤', label: 'Interview Done' },
-  EVALUATED:                { color: 'text-emerald-700', bg: 'bg-emerald-50/80', border: 'border-emerald-100', icon: '⭐', label: 'Evaluated' },
-  EVALUATED_LOCAL_BASELINE: { color: 'text-cyan-700', bg: 'bg-cyan-50/80', border: 'border-cyan-100', icon: '⭐', label: 'Evaluated' },
-  SHORTLISTED:              { color: 'text-purple-750', bg: 'bg-purple-50/80', border: 'border-purple-100', icon: '🌟', label: 'Shortlisted' },
-  HIRED:                    { color: 'text-emerald-700', bg: 'bg-emerald-50/80', border: 'border-emerald-100', icon: '🎊', label: 'Hired!' },
-  REJECTED:                 { color: 'text-rose-700', bg: 'bg-rose-50/80', border: 'border-rose-100', icon: '📋', label: 'Closed' },
-  WITHDRAWN:                { color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200', icon: '↩️', label: 'Withdrawn' },
+const STATUS_META: Record<string, { color: string; bg: string; border: string; icon: string; label: string; leftBorder: string }> = {
+  APPLIED:                  { color: 'text-blue-700', bg: 'bg-blue-50/80', border: 'border-blue-100', icon: '📨', label: 'Applied', leftBorder: 'border-l-[#42A5F5]' },
+  ATS_PENDING:              { color: 'text-purple-700', bg: 'bg-purple-50/80', border: 'border-purple-100', icon: '🤖', label: 'Resume Review', leftBorder: 'border-l-[#42A5F5]' },
+  ATS_COMPLETED:            { color: 'text-indigo-700', bg: 'bg-indigo-50/80', border: 'border-indigo-100', icon: '✅', label: 'Resume Screened', leftBorder: 'border-l-[#10B981]' },
+  SIMULATION_INVITED:       { color: 'text-pink-700', bg: 'bg-pink-50/80', border: 'border-pink-100', icon: '📩', label: 'Simulation Invited', leftBorder: 'border-l-[#FFC107]' },
+  SIMULATION_IN_PROGRESS:   { color: 'text-amber-700', bg: 'bg-amber-50/80', border: 'border-amber-100', icon: '🎯', label: 'Simulation Active', leftBorder: 'border-l-[#FFC107]' },
+  SIMULATION_COMPLETED:     { color: 'text-teal-700', bg: 'bg-teal-50/80', border: 'border-teal-100', icon: '🎯', label: 'Simulation Done', leftBorder: 'border-l-[#10B981]' },
+  INTERVIEW_INVITED:        { color: 'text-orange-700', bg: 'bg-orange-50/80', border: 'border-orange-100', icon: '📩', label: 'Interview Invited', leftBorder: 'border-l-[#FFC107]' },
+  INTERVIEW_IN_PROGRESS:    { color: 'text-amber-700', bg: 'bg-amber-50/80', border: 'border-amber-100', icon: '🎤', label: 'Interview Active', leftBorder: 'border-l-[#FFC107]' },
+  INTERVIEW_COMPLETED:      { color: 'text-green-700', bg: 'bg-green-50/80', border: 'border-green-100', icon: '🎤', label: 'Interview Done', leftBorder: 'border-l-[#10B981]' },
+  EVALUATED:                { color: 'text-emerald-700', bg: 'bg-emerald-50/80', border: 'border-emerald-100', icon: '⭐', label: 'Evaluated', leftBorder: 'border-l-[#10B981]' },
+  EVALUATED_LOCAL_BASELINE: { color: 'text-cyan-700', bg: 'bg-cyan-50/80', border: 'border-cyan-100', icon: '⭐', label: 'Evaluated', leftBorder: 'border-l-[#10B981]' },
+  SHORTLISTED:              { color: 'text-[#0D47A1]', bg: 'bg-blue-50/80', border: 'border-blue-100', icon: '🌟', label: 'Shortlisted', leftBorder: 'border-l-[#10B981]' },
+  HIRED:                    { color: 'text-emerald-700', bg: 'bg-emerald-50/80', border: 'border-emerald-100', icon: '🎊', label: 'Hired!', leftBorder: 'border-l-[#10B981]' },
+  REJECTED:                 { color: 'text-rose-700', bg: 'bg-rose-50/80', border: 'border-rose-100', icon: '📋', label: 'Closed', leftBorder: 'border-l-rose-500' },
+  WITHDRAWN:                { color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200', icon: '↩️', label: 'Withdrawn', leftBorder: 'border-l-slate-300' },
 };
 
 const STATUS_FILTER_TABS = [
@@ -68,21 +66,6 @@ function ApplicationsContent() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;
-
-  // Retrieve user details safely
-  const user = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const uStr = localStorage.getItem('capvia_user');
-      if (uStr) {
-        try {
-          return JSON.parse(uStr);
-        } catch {
-          return null;
-        }
-      }
-    }
-    return null;
-  }, []);
 
   // Fetch dashboard stats
   const { data: dashboard } = useQuery({
@@ -132,33 +115,33 @@ function ApplicationsContent() {
   return (
     <div className="space-y-8 animate-fade-in font-sans text-slate-800">
       
-      {/* Overview Stats Summary */}
+      {/* Overview Stats Summary (Display-weight typography + Tinted borders) */}
       {dashboard && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white border border-slate-100 rounded-[20px] p-6 shadow-sm flex items-center justify-between">
+          <div className="bg-white border border-[#42A5F5]/30 border-l-4 border-l-[#42A5F5] rounded-2xl p-6 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Applications</p>
-              <h4 className="text-3xl font-bold text-slate-800 tracking-tight font-outfit mt-1">{dashboard.total_applications}</h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Applications</p>
+              <h4 className="text-4xl font-black text-slate-800 tracking-tight font-outfit mt-1">{dashboard.total_applications}</h4>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0D47A1] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-[#42A5F5]/10 text-[#0D47A1] flex items-center justify-center">
               <Briefcase size={20} />
             </div>
           </div>
-          <div className="bg-white border border-slate-100 rounded-[20px] p-6 shadow-sm flex items-center justify-between">
+          <div className="bg-white border border-[#FFC107]/30 border-l-4 border-l-[#FFC107] rounded-2xl p-6 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Pipelines</p>
-              <h4 className="text-3xl font-bold text-[#0D47A1] tracking-tight font-outfit mt-1">{dashboard.active_applications}</h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Pipelines</p>
+              <h4 className="text-4xl font-black text-[#0D47A1] tracking-tight font-outfit mt-1">{dashboard.active_applications}</h4>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-[#FFC107]/15 text-amber-600 flex items-center justify-center">
               <TrendingUp size={20} />
             </div>
           </div>
-          <div className="bg-white border border-slate-100 rounded-[20px] p-6 shadow-sm flex items-center justify-between">
+          <div className="bg-white border border-[#10B981]/30 border-l-4 border-l-[#10B981] rounded-2xl p-6 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Offers Received</p>
-              <h4 className="text-3xl font-bold text-emerald-600 tracking-tight font-outfit mt-1">{dashboard.hired_count}</h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Offers Received</p>
+              <h4 className="text-4xl font-black text-emerald-600 tracking-tight font-outfit mt-1">{dashboard.hired_count}</h4>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-[#10B981]/10 text-emerald-600 flex items-center justify-center">
               <Award size={20} />
             </div>
           </div>
@@ -180,7 +163,7 @@ function ApplicationsContent() {
                   <Briefcase className="h-5 w-5 text-[#0D47A1]" />
                   Active Pipelines
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">Review the status and score criteria of your job filings.</p>
+                <p className="text-xs text-slate-400 mt-1 font-semibold">Review the status and score criteria of your job filings.</p>
               </div>
               
               <div className="flex flex-wrap gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
@@ -188,7 +171,7 @@ function ApplicationsContent() {
                   <button
                     key={tab.key}
                     onClick={() => { setActiveTab(tab.key); setPage(1); }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all duration-200 uppercase tracking-wider ${
                       activeTab === tab.key 
                         ? 'bg-[#0D47A1] text-white shadow-sm' 
                         : 'text-slate-500 hover:text-slate-800'
@@ -216,8 +199,8 @@ function ApplicationsContent() {
             ) : applications.length === 0 ? (
               <div className="py-16 text-center border border-dashed border-slate-200 rounded-[20px] bg-slate-50/50 p-8">
                 <Inbox className="h-10 w-10 mx-auto mb-4 text-slate-300" />
-                <h4 className="font-bold text-slate-700 text-sm">No applications found</h4>
-                <p className="text-slate-400 text-xs mt-1 max-w-xs mx-auto">
+                <h4 className="font-bold text-slate-700 text-sm font-outfit">No applications found</h4>
+                <p className="text-slate-400 text-xs mt-1 max-w-xs mx-auto font-medium">
                   {activeTab === 'ALL' 
                     ? "You haven't submitted any internship applications yet."
                     : `No applications match the filter: "${activeTab.toLowerCase()}".`}
@@ -225,27 +208,26 @@ function ApplicationsContent() {
                 {activeTab === 'ALL' && (
                   <Link 
                     href="/internships" 
-                    className="mt-6 inline-flex items-center space-x-1 px-4 py-2 bg-[#0D47A1] hover:bg-[#0b3c8a] text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+                    className="mt-6 inline-flex items-center space-x-1 px-5 py-2.5 bg-[#0D47A1] hover:bg-[#1976D2] text-white font-bold text-xs rounded-full shadow-md transition-all"
                   >
                     Browse Listings
-                    <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 )}
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
                 {applications.map((app: AppItem) => {
-                  const meta = STATUS_META[app.status] || { color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200', icon: '📋', label: app.status };
+                  const meta = STATUS_META[app.status] || { color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200', icon: '📋', label: app.status, leftBorder: 'border-l-slate-200' };
                   const pct = Math.round((app.progress_step / Math.max(app.progress_total - 1, 1)) * 100);
                   const appliedDate = new Date(app.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
                   return (
                     <Link key={app.id} href={`/applications/${app.id}`}>
-                      <div className="p-5 border border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50/30 rounded-2xl transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer relative group">
+                      <div className={`p-5 border border-slate-100 border-l-4 ${meta.leftBorder} bg-white hover:bg-slate-50/30 rounded-2xl transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer relative group`}>
                         
                         <div className="flex items-center space-x-4 min-w-0 flex-1">
-                          {/* Logo placeholder */}
-                          <div className="h-12 w-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center font-black text-[#0D47A1] text-lg flex-shrink-0 overflow-hidden">
+                          {/* Company square logo */}
+                          <div className="h-12 w-12 rounded-xl bg-[#0D47A1]/10 border border-[#0D47A1]/20 flex items-center justify-center font-black text-[#0D47A1] text-lg flex-shrink-0 overflow-hidden uppercase">
                             {app.company_logo ? (
                               <img src={app.company_logo} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -255,17 +237,17 @@ function ApplicationsContent() {
 
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="font-bold text-slate-800 text-sm tracking-tight truncate group-hover:text-[#0D47A1] transition-colors font-outfit">
+                              <h4 className="font-black text-slate-800 text-sm tracking-tight truncate group-hover:text-[#0D47A1] transition-colors font-outfit">
                                 {app.vacancy_title}
                               </h4>
                               
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${meta.bg} ${meta.border} ${meta.color}`}>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border tracking-wider ${meta.bg} ${meta.border} ${meta.color}`}>
                                 <span className="mr-1">{meta.icon}</span> {meta.label}
                               </span>
                             </div>
 
-                            <p className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-x-2 font-medium">
-                              <span className="font-semibold text-slate-500">{app.company_name}</span>
+                            <p className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-x-2 font-semibold">
+                              <span className="font-bold text-[#0D47A1]">{app.company_name}</span>
                               {app.vacancy_work_mode && (
                                 <>
                                   <span className="text-slate-300">•</span>
@@ -284,41 +266,38 @@ function ApplicationsContent() {
                           </div>
                         </div>
 
-                        {/* Progress Stepper and Scores */}
-                        <div className="flex items-center md:items-end justify-between md:justify-start gap-6 md:text-right">
+                        {/* Circular Score Badges & Progress Gradient Fills */}
+                        <div className="flex items-center justify-between md:justify-end gap-6 md:text-right shrink-0">
                           
-                          {/* Scores summary */}
-                          {(app.ats_score != null || app.simulation_score != null) && (
-                            <div className="text-[10px] space-y-1 font-bold">
-                              {app.ats_score != null && (
-                                <div className="text-blue-700 bg-blue-50/50 px-2.5 py-0.5 rounded border border-blue-100">
-                                  ATS Fit: <span className="font-black text-xs">{app.ats_score.toFixed(0)}%</span>
-                                </div>
-                              )}
-                              {app.simulation_score != null && (
-                                <div className="text-indigo-750 bg-indigo-50/50 px-2.5 py-0.5 rounded border border-indigo-105">
-                                  Challenge: <span className="font-black text-xs">{app.simulation_score.toFixed(0)}%</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          {/* Circular Score Badges */}
+                          <div className="flex items-center gap-2">
+                            {app.ats_score != null && (
+                              <div className="w-12 h-12 rounded-full border-2 border-[#42A5F5]/30 bg-[#42A5F5]/5 flex flex-col items-center justify-center text-center shrink-0" title="ATS Match Score">
+                                <span className="text-[11px] font-black text-[#0D47A1] leading-none">{app.ats_score.toFixed(0)}%</span>
+                                <span className="text-[6px] font-black text-slate-400 leading-none mt-0.5 uppercase">ATS</span>
+                              </div>
+                            )}
+                            {app.simulation_score != null && (
+                              <div className="w-12 h-12 rounded-full border-2 border-[#FFC107]/30 bg-[#FFC107]/5 flex flex-col items-center justify-center text-center shrink-0" title="Simulation Score">
+                                <span className="text-[11px] font-black text-amber-650 leading-none">{app.simulation_score.toFixed(0)}%</span>
+                                <span className="text-[6px] font-black text-slate-400 leading-none mt-0.5 uppercase">Sim</span>
+                              </div>
+                            )}
+                          </div>
 
-                          {/* Completion percent */}
+                          {/* Completion percent with gradient fills */}
                           <div className="flex flex-col items-end w-28 flex-shrink-0">
-                            <div className="flex justify-between w-full text-[10px] text-slate-400 font-bold mb-1">
-                              <span>Progress</span>
+                            <div className="flex justify-between w-full text-[9px] text-slate-400 font-black uppercase tracking-wider mb-1">
+                              <span>PROGRESS</span>
                               <span>{pct}%</span>
                             </div>
-                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                               <div 
-                                className="h-full rounded-full transition-all duration-500" 
-                                style={{ 
-                                  width: `${pct}%`,
-                                  background: app.status === 'REJECTED' ? '#ef4444' : app.status === 'HIRED' || app.status === 'SHORTLISTED' ? '#10b981' : '#0D47A1'
-                                }}
+                                className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-[#1976D2] to-[#42A5F5]" 
+                                style={{ width: `${pct}%` }}
                               />
                             </div>
-                            <span className="text-[9px] text-slate-400 mt-1 font-medium">{appliedDate}</span>
+                            <span className="text-[9px] text-slate-400 mt-1 font-semibold">{appliedDate}</span>
                           </div>
 
                           <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-[#0D47A1] transition-colors hidden md:block" />
@@ -375,7 +354,7 @@ function ApplicationsContent() {
               <button 
                 onClick={() => markAllReadMutation.mutate()}
                 disabled={markAllReadMutation.isPending}
-                className="text-xs text-[#0D47A1] hover:text-[#0b3c8a] font-bold transition-colors"
+                className="text-xs text-[#0D47A1] hover:text-[#1976D2] font-bold transition-colors"
               >
                 Mark all read
               </button>
@@ -385,9 +364,9 @@ function ApplicationsContent() {
           {/* Notifications feed list */}
           <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
             {notifications.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs italic flex flex-col items-center justify-center gap-2">
+              <div className="py-12 text-center text-slate-450 text-xs italic flex flex-col items-center justify-center gap-2 font-semibold uppercase tracking-wider">
                 <Check className="h-8 w-8 text-emerald-500 bg-emerald-50 p-1.5 rounded-full" />
-                <span>All caught up! No unread notifications.</span>
+                <span>All caught up!</span>
               </div>
             ) : (
               notifications.map((notif: any) => {
@@ -398,10 +377,10 @@ function ApplicationsContent() {
                     className="p-3 bg-slate-50/50 hover:bg-slate-50 border border-slate-100 rounded-xl transition-all flex justify-between items-start gap-3 relative group"
                   >
                     <div className="space-y-1">
-                      <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                      <p className="text-xs text-slate-705 font-medium leading-relaxed">
                         {notif.content}
                       </p>
-                      <span className="text-[9px] text-slate-400 block font-semibold">
+                      <span className="text-[9px] text-slate-400 block font-bold">
                         {date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>

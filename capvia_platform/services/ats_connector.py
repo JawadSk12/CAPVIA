@@ -155,10 +155,18 @@ class ATSConnector:
                     latency = time.time() - start_time
                     logger.info(f"ATS API Response: {response.status_code} in {latency:.4f}s")
 
-                    # If successful or client error, count as success for circuit breaker (we only trip on 5xx or connection issues)
-                    if response.status_code < 500:
+                    # If successful, count as success for circuit breaker and return response
+                    if response.status_code < 300:
                         self.circuit_breaker.record_success()
                         return response
+                    elif response.status_code < 500:
+                        # Client error — count as success for circuit breaker but raise immediately (do not retry)
+                        self.circuit_breaker.record_success()
+                        raise ATSConnectorException(
+                            message=f"External ATS service returned error: {response.text}",
+                            status_code=response.status_code,
+                            details={"url": url, "status_code": response.status_code}
+                        )
 
                     # 5xx triggers retry
                     raise httpx.HTTPStatusError(
@@ -168,6 +176,8 @@ class ATSConnector:
                     )
 
                 except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                    if isinstance(e, ATSConnectorException):
+                        raise
                     latency = time.time() - start_time
                     logger.warning(f"ATS API Error: {str(e)} on attempt {attempt + 1} (latency: {latency:.4f}s)")
                     

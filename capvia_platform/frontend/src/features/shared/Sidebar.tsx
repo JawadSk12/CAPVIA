@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Briefcase, Inbox, FileText, Terminal, Video, Dna,
   PieChart, User, Bell, Settings, HelpCircle, LogOut, X, BrainCircuit,
   Building, Users, Trophy, BarChart, CreditCard, UserCheck,
-  Bookmark, Cpu, ScrollText, HeartPulse, BarChart2, Sparkles,
+  Bookmark, Cpu, ScrollText, HeartPulse, BarChart2,
   GraduationCap, Target, ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
@@ -133,36 +133,36 @@ const roleBrand: Record<string, {
   badgeLabel: string;
 }> = {
   hr: {
-    headerBg: 'bg-gradient-to-br from-[#0D47A1] to-[#1565C0]',
+    headerBg: 'bg-[#1E3A6E]',
     headerText: 'text-white',
     brand: 'CAPVIA',
     tagline: 'Hiring OS',
-    activeBg: 'bg-white/15',
+    activeBg: 'bg-[#42A5F5]/10',
     activeText: 'text-white',
-    activeIconColor: 'text-[#FFC107]',
+    activeIconColor: 'text-[#42A5F5]',
     badgeCls: 'bg-[#FFC107] text-[#0D47A1]',
     badgeLabel: 'HR',
   },
   admin: {
-    headerBg: 'bg-gradient-to-br from-slate-900 to-slate-800',
+    headerBg: 'bg-[#1E3A6E]',
     headerText: 'text-white',
     brand: 'CAPVIA',
     tagline: 'Admin Panel',
-    activeBg: 'bg-white/10',
+    activeBg: 'bg-[#42A5F5]/10',
     activeText: 'text-white',
-    activeIconColor: 'text-violet-300',
+    activeIconColor: 'text-[#42A5F5]',
     badgeCls: 'bg-violet-500 text-white',
     badgeLabel: 'ADMIN',
   },
   candidate: {
-    headerBg: 'bg-white',
-    headerText: 'text-slate-900',
+    headerBg: 'bg-[#1E3A6E]',
+    headerText: 'text-white',
     brand: 'CAPVIA',
     tagline: 'Career Portal',
-    activeBg: 'bg-[#0D47A1]/8',
-    activeText: 'text-[#0D47A1]',
-    activeIconColor: 'text-[#0D47A1]',
-    badgeCls: 'bg-blue-100 text-[#0D47A1] border border-blue-200',
+    activeBg: 'bg-[#42A5F5]/10',
+    activeText: 'text-white',
+    activeIconColor: 'text-[#42A5F5]',
+    badgeCls: 'bg-[#42A5F5]/25 text-[#42A5F5]',
     badgeLabel: 'CANDIDATE',
   },
 };
@@ -180,23 +180,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   const brand = roleBrand[role] || roleBrand.candidate;
   const isHrOrAdmin = role === 'hr' || role === 'admin';
-  const sidebarBg = isHrOrAdmin ? 'bg-[#0D47A1]' : 'bg-white';
-  const borderCls = isHrOrAdmin ? 'border-white/10' : 'border-slate-100';
-  const groupLabelCls = isHrOrAdmin ? 'text-blue-200/60' : 'text-slate-400';
-  const linkBase = isHrOrAdmin
-    ? 'text-blue-100/80 hover:text-white hover:bg-white/10'
-    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50';
-  const activeLinkCls = isHrOrAdmin
-    ? 'bg-white/15 text-white'
-    : 'bg-[#0D47A1]/8 text-[#0D47A1]';
-  const activeIconCls = isHrOrAdmin ? 'text-[#FFC107]' : 'text-[#0D47A1]';
-  const inactiveIconCls = isHrOrAdmin ? 'text-blue-200/50' : 'text-slate-400';
-  const footerBg = isHrOrAdmin ? 'bg-white/10 border-white/10' : 'bg-slate-50 border-slate-100';
-  const footerText = isHrOrAdmin ? 'text-white' : 'text-slate-800';
-  const footerSub = isHrOrAdmin ? 'text-blue-200/60' : 'text-slate-400';
-  const logoutCls = isHrOrAdmin
-    ? 'text-blue-200/70 hover:text-white hover:bg-white/10'
-    : 'text-slate-500 hover:text-red-600 hover:bg-red-50';
+  const sidebarBg = 'bg-[#1E3A6E]';
+  const borderCls = 'border-white/10';
+  const groupLabelCls = 'text-[10px] uppercase tracking-widest text-white/30 font-bold';
+  const linkBase = 'text-white/70 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-200';
+  const activeLinkCls = 'bg-[#42A5F5]/10 text-white border-l-4 border-l-[#42A5F5] rounded-r-xl rounded-l-none';
+  const activeIconCls = 'text-[#42A5F5]';
+  const inactiveIconCls = 'text-white/40';
+  const logoutCls = 'text-white/60 hover:text-white hover:bg-red-500/25 transition-colors';
 
   return (
     <>
@@ -214,19 +205,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* ── Header ─────────────────────────────────────────── */}
         <div className={cn('h-auto px-4 pt-5 pb-4 border-b shrink-0', borderCls)}>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-white p-1 flex items-center justify-center shadow-md border border-slate-100">
-                <img src="/logo.png" alt="CAPVIA Logo" className="w-full h-full object-contain" />
+                <BrainCircuit className="w-6 h-6 text-[#0D47A1]" />
               </div>
               <div>
-                <span className={cn('text-base font-black tracking-tight font-outfit', isHrOrAdmin ? 'text-white' : 'text-slate-900')}>
+                <span className="text-lg font-black tracking-tight font-outfit text-white">
                   {brand.brand}
                 </span>
               </div>
             </div>
             <button onClick={onClose}
-              className={cn('lg:hidden p-1 rounded-lg transition-colors', isHrOrAdmin ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700')}>
+              className="lg:hidden p-1 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -238,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 ? <Target className="w-3 h-3 text-[#FFC107]" />
                 : <GraduationCap className="w-3 h-3 text-[#42A5F5]" />
               }
-              <span className={cn('text-[10px] font-semibold', isHrOrAdmin ? 'text-blue-200/80' : 'text-slate-500')}>
+              <span className="text-[10px] font-bold text-white/60">
                 {brand.tagline}
               </span>
             </div>
@@ -247,19 +238,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             </span>
           </div>
 
-          {/* User quick preview */}
+          {/* User quick preview with Dark Glass surface */}
           {user && (
-            <div className={cn('flex items-center gap-2.5 mt-3 px-2.5 py-2 rounded-xl border', footerBg)}>
-              <div className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0',
-                isHrOrAdmin ? 'bg-[#FFC107] text-[#0D47A1]' : 'bg-[#0D47A1]'
-              )}>
+            <div className="flex items-center gap-2.5 mt-4 px-3 py-2.5 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-lg">
+              <div className="w-8 h-8 rounded-full bg-[#42A5F5] text-white flex items-center justify-center text-xs font-black flex-shrink-0">
                 {(user.full_name || user.email || 'U')[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <div className={cn('text-[11px] font-bold truncate', footerText)}>
+                <div className="text-[11px] font-bold truncate text-white">
                   {user.full_name || user.email}
                 </div>
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#42A5F5]/25 text-[#42A5F5] mt-0.5 inline-block">
+                  {role.toUpperCase()}
+                </span>
               </div>
             </div>
           )}
@@ -269,10 +260,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5 scrollbar-thin">
           {groups.map((group) => (
             <div key={group.label}>
-              <p className={cn('px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest', groupLabelCls)}>
+              <p className={cn('px-3 mb-2', groupLabelCls)}>
                 {group.label}
               </p>
-              <nav className="space-y-0.5">
+              <nav className="space-y-1">
                 {group.links.map((link) => {
                   const Icon = link.icon;
                   const active = pathname === link.href || pathname?.startsWith(link.href + '/');
@@ -282,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       href={link.href}
                       onClick={onClose}
                       className={cn(
-                        'flex items-center justify-between px-3 py-2 text-[13px] font-semibold rounded-xl transition-all duration-150',
+                        'flex items-center justify-between px-3 py-2.5 text-[13px] font-semibold transition-all duration-150',
                         active ? activeLinkCls : linkBase
                       )}
                     >
@@ -311,7 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <button
             onClick={() => { logout(); window.location.href = '/auth/login'; }}
             className={cn(
-              'flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-semibold rounded-xl transition-all',
+              'flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-semibold rounded-xl',
               logoutCls
             )}
           >

@@ -4,7 +4,6 @@ import { useInterviewFlow } from '../hooks/useInterviewFlow';
 import { useBrowserFaceDetection } from '../hooks/useBrowserFaceDetection';
 import { useBrowserSecurity } from '@/hooks/useBrowserSecurity';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import { VideoRecorder } from '../components/Interview/VideoRecorder';
 import { VideoRecordingService, blobToBase64 } from '../services/videoRecordingService';
 import { TTSService } from '../services/ttsService';
 import { KioskOverlay } from '../components/Security/KioskOverlay';
@@ -17,8 +16,9 @@ import { AuthService } from '../services/authService';
 import { loadInterviewConfig } from '../data/questions';
 import { Card } from '../components/UI/Card';
 import { 
-  ShieldAlert, Mic, MicOff, Maximize, HelpCircle, AlertCircle, Play, 
-  Search, CheckCircle, Clock, Award, Video, Monitor, AlertTriangle 
+  ShieldAlert, Mic, MicOff, Maximize, HelpCircle, Play, 
+  Search, CheckCircle, Video, AlertTriangle, Camera, Wifi,
+  Monitor, Globe, RefreshCw, ChevronRight
 } from 'lucide-react';
 
 // Thresholds for proctoring — must match useBrowserFaceDetection.ts
@@ -66,7 +66,12 @@ const DIFF_LABEL: Record<string, { label: string; color: string }> = {
 const Interview: React.FC = () => {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const videoRecorderRef = useRef<VideoRecordingService | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number>(0);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   // ── Browser kiosk security hook ────────────────────────────────────────────
   const {
@@ -116,6 +121,16 @@ const Interview: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showHelp, setShowHelp] = useState(false);
 
+  // ── Pre-Start Diagnostics State ─────────────────────────────────────────
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [selectedMic, setSelectedMic] = useState<string>('');
+  const [permissionStatus, setPermissionStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [networkStatus, setNetworkStatus] = useState<'checking' | 'good' | 'poor'>('checking');
+  const [browserOk, setBrowserOk] = useState(false);
+
   // ── Interview Flow (5 questions) ───────────────────────────────────────
   const {
     interviewState, currentQuestion, isLoadingQuestions, questionsError,
@@ -137,31 +152,116 @@ const Interview: React.FC = () => {
     startMonitoring, stopMonitoring, reset: resetDetection,
   } = useBrowserFaceDetection();
 
-  // ── Camera Init ────────────────────────────────────────────────────────
+  // ── Browser compatibility check ────────────────────────────────────────
   useEffect(() => {
-    const initCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: true,
-        });
-        setMediaStream(stream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch {
-        alert('Camera and microphone access are required for this interview.');
+    const ok = !!(navigator.mediaDevices && 'getUserMedia' in navigator.mediaDevices && 'AudioContext' in window);
+    setBrowserOk(ok);
+  }, []);
+
+  // ── Network status check ──────────────────────────────────────────────
+  useEffect(() => {
+    setNetworkStatus('checking');
+    const start = Date.now();
+    fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store' })
+      .then(() => setNetworkStatus(Date.now() - start < 1500 ? 'good' : 'poor'))
+      .catch(() => setNetworkStatus('poor'));
+  }, []);
+
+  // ── Camera/Mic Init ────────────────────────────────────────────────────
+  const initCamera = useCallback(async (camId?: string, micId?: string) => {
+    try {
+      // Stop existing tracks via ref (avoids stale closure)
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop());
+        mediaStreamRef.current = null;
       }
-    };
+      // Stop old audio analyzer
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      cancelAnimationFrame(animFrameRef.current);
+
+      const constraints: MediaStreamConstraints = {
+        video: {
+          deviceId: camId ? { exact: camId } : undefined,
+          width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: camId ? undefined : 'user',
+        },
+        audio: { deviceId: micId ? { exact: micId } : undefined },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      mediaStreamRef.current = stream;
+      setMediaStream(stream);
+      setPermissionStatus('granted');
+
+      // Bind to preview video element
+      if (previewVideoRef.current) {
+        previewVideoRef.current.srcObject = stream;
+        previewVideoRef.current.play().catch(() => {});
+      }
+
+      // Enumerate devices after permission granted
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const vids = devices.filter(d => d.kind === 'videoinput');
+      const auds = devices.filter(d => d.kind === 'audioinput');
+      setCameras(vids);
+      setMicrophones(auds);
+      if (!camId && vids.length > 0) setSelectedCamera(vids[0].deviceId);
+      if (!micId && auds.length > 0) setSelectedMic(auds[0].deviceId);
+
+      // Audio level meter
+      const audioCtx = new AudioContext();
+      audioContextRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+        setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        animFrameRef.current = requestAnimationFrame(tick);
+      };
+      animFrameRef.current = requestAnimationFrame(tick);
+
+    } catch {
+      setPermissionStatus('denied');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCamera, selectedMic]);
+
+  useEffect(() => {
     initCamera();
     return () => {
-      mediaStream?.getTracks().forEach(t => t.stop());
+      mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+      if (audioContextRef.current) audioContextRef.current.close();
+      cancelAnimationFrame(animFrameRef.current);
       videoRecorderRef.current?.destroy();
       stopMonitoring();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Re-init camera when device selection changes ───────────────────────
+  const handleCameraChange = useCallback((deviceId: string) => {
+    setSelectedCamera(deviceId);
+    initCamera(deviceId, selectedMic);
+  }, [initCamera, selectedMic]);
+
+  const handleMicChange = useCallback((deviceId: string) => {
+    setSelectedMic(deviceId);
+    initCamera(selectedCamera, deviceId);
+  }, [initCamera, selectedCamera]);
+
+  // ── Rebind stream to active videoRef when interview starts ────────────
+  useEffect(() => {
+    if (videoRef.current && mediaStream) {
+      videoRef.current.srcObject = mediaStream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [mediaStream, isRecordingVideo]);
 
   // ── Overall Elapsed Timer ──────────────────────────────────────────────
   useEffect(() => {
@@ -241,17 +341,23 @@ const Interview: React.FC = () => {
   // ── Start Interview ────────────────────────────────────────────────────
   const handleStartInterview = async () => {
     TTSService.unlock();
-    if (!mediaStream || !videoRef.current) {
+    if (!mediaStream) {
       alert('Please enable camera access first.');
       return;
     }
+    // Stop audio analyzer before interview (video element will take over)
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    cancelAnimationFrame(animFrameRef.current);
     try {
       clearAnswers();
       resetDetection();
       const detectionReady = await initDetection();
 
       videoRecorderRef.current = new VideoRecordingService();
-      await videoRecorderRef.current.startRecording(videoRef.current);
+      await videoRecorderRef.current.startRecording(videoRef.current!);
       setIsRecordingVideo(true);
 
       setAiPhase('speaking');
@@ -496,42 +602,237 @@ const Interview: React.FC = () => {
       {/* ── MAIN WORKSPACE CONTENT ── */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
         
-        {/* Not Started State */}
-        {!isRecording && interviewState.status === 'not_started' && (
-          <div className="max-w-xl mx-auto py-12">
-            <div className="bg-white border border-slate-200 rounded-[24px] p-8 text-center shadow-sm space-y-6">
-              <div className="w-16 h-16 rounded-full bg-[#0D47A1]/5 text-[#0D47A1] flex items-center justify-center mx-auto text-3xl">
-                🎙️
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-extrabold text-slate-900 font-outfit">Ready to start the Interview?</h2>
-                <p className="text-slate-500 text-xs font-semibold leading-relaxed max-w-sm mx-auto">
-                  The AI voice engine will present 5 technical and capability questions. Respond verbally to each question. Your answers are captured in real-time.
+        {/* ── Pre-Start Diagnostics Screen ── */}
+        {!isRecording && interviewState.status === 'not_started' && (() => {
+          const allClear = permissionStatus === 'granted' && networkStatus === 'good' && browserOk;
+          const interviewConfig = loadInterviewConfig();
+          const checks = [
+            { label: 'Camera Permission', ok: permissionStatus === 'granted', icon: <Camera className="w-3.5 h-3.5" /> },
+            { label: 'Microphone Active', ok: permissionStatus === 'granted' && audioLevel > 0, icon: <Mic className="w-3.5 h-3.5" /> },
+            { label: 'Network Connection', ok: networkStatus === 'good', icon: <Wifi className="w-3.5 h-3.5" /> },
+            { label: 'Browser Compatible', ok: browserOk, icon: <Globe className="w-3.5 h-3.5" /> },
+          ];
+          return (
+            <div className="max-w-5xl mx-auto py-8 px-4">
+              {/* Page Header */}
+              <div className="mb-6 text-center">
+                <span className="inline-flex items-center gap-1.5 bg-[#0D47A1]/5 border border-[#0D47A1]/10 text-[#0D47A1] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0D47A1] animate-pulse" />
+                  Pre-Interview Diagnostics
+                </span>
+                <h2 className="text-2xl font-extrabold text-slate-900 font-outfit tracking-tight">System Readiness Check</h2>
+                <p className="text-slate-500 text-xs font-semibold mt-1.5 max-w-sm mx-auto">
+                  All systems must pass before you can begin. This takes less than 10 seconds.
                 </p>
               </div>
 
-              {/* progressive rounds description */}
-              <div className="grid grid-cols-5 gap-1.5 max-w-sm mx-auto py-2">
-                {['Easy', 'Easy', 'Mod', 'Mod', 'Hard'].map((d, i) => (
-                  <div key={i} className="flex flex-col items-center bg-[#F8FAFC] border border-slate-100 p-2 rounded-xl">
-                    <span className="text-[10px] text-slate-400 font-bold">Q{i+1}</span>
-                    <span className={`text-[9px] font-black mt-1 ${d === 'Hard' ? 'text-[#EF4444]' : d === 'Mod' ? 'text-[#F59E0B]' : 'text-[#10B981]'}`}>{d}</span>
-                  </div>
-                ))}
-              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-              <button
-                id="btn-start-interview"
-                onClick={handleStartInterview}
-                disabled={!mediaStream}
-                className="w-full sm:w-auto px-10 py-4 bg-[#0D47A1] text-white hover:bg-[#0b3c8a] rounded-xl font-bold text-sm shadow hover:scale-[1.01] transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                Launch Assessment Session
-              </button>
+                {/* LEFT: Camera Preview */}
+                <div className="lg:col-span-6 space-y-4">
+                  <div className="bg-white border border-slate-200 rounded-[24px] p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Video className="w-3.5 h-3.5 text-[#0D47A1]" /> Camera Preview
+                      </h3>
+                      {permissionStatus === 'granted' && (
+                        <span className="text-[10px] font-black text-[#10B981] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase">✓ Live</span>
+                      )}
+                      {permissionStatus === 'denied' && (
+                        <span className="text-[10px] font-black text-[#EF4444] bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase">✗ Blocked</span>
+                      )}
+                      {permissionStatus === 'pending' && (
+                        <span className="text-[10px] font-black text-[#F59E0B] bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full uppercase animate-pulse">Requesting…</span>
+                      )}
+                    </div>
+
+                    {/* Video Preview */}
+                    <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video border border-slate-200/50 shadow-inner">
+                      <video ref={previewVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                      {permissionStatus === 'denied' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-white space-y-2 p-4">
+                          <Camera className="w-8 h-8 text-red-400" />
+                          <p className="text-xs font-bold text-center">Camera access blocked.<br/>Open browser settings to allow camera.</p>
+                          <button onClick={() => initCamera()} className="text-[10px] font-black bg-[#0D47A1] px-3 py-1.5 rounded-lg flex items-center gap-1 mt-1">
+                            <RefreshCw className="w-3 h-3" /> Retry
+                          </button>
+                        </div>
+                      )}
+                      {permissionStatus === 'pending' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 text-white space-y-2">
+                          <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <p className="text-xs font-bold">Awaiting permission…</p>
+                        </div>
+                      )}
+                      {permissionStatus === 'granted' && (
+                        <div className="absolute bottom-2.5 right-2.5 bg-slate-900/60 backdrop-blur-sm text-white text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase">
+                          PREVIEW MODE
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Audio Level Meter */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <span className="flex items-center gap-1"><Mic className="w-3 h-3" /> Microphone Level</span>
+                        <span className={audioLevel > 5 ? 'text-[#10B981]' : 'text-slate-400'}>{audioLevel > 5 ? 'Detecting audio' : 'Speak to test'}</span>
+                      </div>
+                      <div className="flex gap-0.5 h-4 items-end">
+                        {Array.from({ length: 32 }).map((_, i) => {
+                          const threshold = (i / 32) * 100;
+                          const active = audioLevel >= threshold;
+                          return (
+                            <div
+                              key={i}
+                              className={`flex-1 rounded-sm transition-all duration-75 ${
+                                active
+                                  ? i < 20 ? 'bg-[#10B981]' : i < 28 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+                                  : 'bg-slate-100'
+                              }`}
+                              style={{ height: `${30 + (i / 32) * 70}%` }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Device Selectors */}
+                    {permissionStatus === 'granted' && cameras.length > 0 && (
+                      <div className="space-y-3 pt-1 border-t border-slate-100">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><Camera className="w-3 h-3" /> Camera</label>
+                          <select
+                            value={selectedCamera}
+                            onChange={e => handleCameraChange(e.target.value)}
+                            className="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0D47A1]"
+                          >
+                            {cameras.map(c => <option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${c.deviceId.slice(0,8)}`}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><Mic className="w-3 h-3" /> Microphone</label>
+                          <select
+                            value={selectedMic}
+                            onChange={e => handleMicChange(e.target.value)}
+                            className="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0D47A1]"
+                          >
+                            {microphones.map(m => <option key={m.deviceId} value={m.deviceId}>{m.label || `Microphone ${m.deviceId.slice(0,8)}`}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT: Checklist + Role Info + Launch */}
+                <div className="lg:col-span-6 space-y-4">
+
+                  {/* System Checks */}
+                  <div className="bg-white border border-slate-200 rounded-[24px] p-5 shadow-sm space-y-4">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">System Checklist</h3>
+                    <div className="space-y-3">
+                      {checks.map((c, i) => (
+                        <div key={i} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                          c.ok ? 'bg-emerald-50/60 border-emerald-200' : 'bg-amber-50/60 border-amber-200'
+                        }`}>
+                          <div className="flex items-center gap-2.5">
+                            <span className={`${c.ok ? 'text-[#10B981]' : 'text-[#F59E0B]'}`}>{c.icon}</span>
+                            <span className="text-xs font-semibold text-slate-700">{c.label}</span>
+                          </div>
+                          {c.ok
+                            ? <CheckCircle className="w-4 h-4 text-[#10B981]" />
+                            : <div className="w-4 h-4 rounded-full border-2 border-[#F59E0B] border-t-transparent animate-spin" />}
+                        </div>
+                      ))}
+                    </div>
+
+                    {permissionStatus === 'denied' && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs">
+                        <p className="font-bold text-[#EF4444] mb-1">Camera/Mic access denied</p>
+                        <p className="text-slate-600 font-medium">Click the camera icon in your browser address bar → Allow → then click Retry below.</p>
+                        <button onClick={() => initCamera()} className="mt-2 flex items-center gap-1 text-[#0D47A1] font-bold hover:underline">
+                          <RefreshCw className="w-3 h-3" /> Retry permissions
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Role & Session Info */}
+                  <div className="bg-white border border-slate-200 rounded-[24px] p-5 shadow-sm space-y-3">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Session Details</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 font-semibold">Role</span>
+                        <span className="font-extrabold text-slate-800 font-outfit">{interviewConfig?.role ?? 'General Technical'}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 font-semibold">Questions</span>
+                        <span className="font-extrabold text-slate-800">5 adaptive questions</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 font-semibold">Format</span>
+                        <span className="font-extrabold text-slate-800">Voice-first AI interview</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 font-semibold">Proctoring</span>
+                        <span className="font-extrabold text-[#0D47A1]">Active monitoring enabled</span>
+                      </div>
+                    </div>
+
+                    {/* Progressive difficulty */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Difficulty Progression</p>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {(['Easy', 'Easy', 'Mod', 'Mod', 'Hard'] as const).map((d, i) => (
+                          <div key={i} className="flex flex-col items-center bg-[#F8FAFC] border border-slate-100 p-2 rounded-xl">
+                            <span className="text-[10px] text-slate-400 font-bold">Q{i+1}</span>
+                            <span className={`text-[9px] font-black mt-1 ${
+                              d === 'Hard' ? 'text-[#EF4444]' : d === 'Mod' ? 'text-[#F59E0B]' : 'text-[#10B981]'
+                            }`}>{d}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Launch Button */}
+                  <button
+                    id="btn-start-interview"
+                    onClick={handleStartInterview}
+                    disabled={!allClear}
+                    className={`w-full py-4 rounded-2xl font-extrabold text-sm transition-all duration-200 flex items-center justify-center gap-2.5 shadow-lg ${
+                      allClear
+                        ? 'bg-[#0D47A1] hover:bg-[#0b3c8a] text-white hover:scale-[1.01] hover:shadow-xl cursor-pointer'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                    }`}
+                  >
+                    {allClear ? (
+                      <>
+                        <Play className="w-4 h-4 fill-white" />
+                        Launch Assessment Session
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                        Waiting for all checks to pass…
+                      </>
+                    )}
+                  </button>
+
+                  {!allClear && (
+                    <p className="text-center text-[10px] text-slate-400 font-semibold">
+                      {permissionStatus === 'denied' ? '🔒 Camera/mic access required' :
+                       networkStatus !== 'good' ? '🌐 Checking network connection…' :
+                       !browserOk ? '⚠️ Browser not fully compatible' :
+                       '⏳ Completing diagnostics…'}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Active Interview Split Grid Layout */}
         {isRecording && (

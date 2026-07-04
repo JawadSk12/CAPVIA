@@ -20,6 +20,7 @@
     "date-fns": "^4.4.0",
     "framer-motion": "^12.42.0",
     "immer": "^11.1.8",
+    "jose": "^6.2.3",
     "js-cookie": "^3.0.8",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.378.0",

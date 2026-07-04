@@ -286,10 +286,12 @@ class ApplicationService:
         from sqlalchemy.orm.attributes import set_committed_value
         set_committed_value(application, "application_mapping", None)
 
-        # Trigger background ATS processing task asynchronously
+        # Trigger background ATS and pre-generation tasks asynchronously
         import asyncio
         from capvia_platform.tasks.ats_tasks import process_ats_stage
+        from capvia_platform.tasks.pipeline_tasks import pre_generate_pipeline
         asyncio.create_task(process_ats_stage(application.id))
+        asyncio.create_task(pre_generate_pipeline(application.id))
 
         return _serialize_application(application)
 

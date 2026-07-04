@@ -19,9 +19,6 @@ import {
   Bookmark,
   ChevronRight,
   Filter,
-  Sparkles,
-  Award,
-  ChevronDown,
   X,
   Plus,
   AlertCircle
@@ -98,7 +95,7 @@ function InternshipsContent() {
   // Mobile Filter Drawer Toggle
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  const PER_PAGE = 10;
+  const PER_PAGE = 9;
 
   // Retrieve saved jobs list from localStorage
   useEffect(() => {
@@ -147,56 +144,55 @@ function InternshipsContent() {
     setIsLoading(true);
     setError(null);
     try {
-      // Map has_stipend strictly from filter query
-      const data = await internshipApi.list({
-        ...filters,
+      const res = await internshipApi.list({
         page,
         per_page: PER_PAGE,
+        ...filters,
+        category: selectedCategory || undefined,
       });
-      setInternships(data.internships || []);
-      setTotal(data.total || 0);
-    } catch (e: any) {
-      setError(e?.response?.data?.error?.message || 'Failed to load internships.');
+
+      const items = res.internships || res.items || res.data || [];
+      const totalCount = res.total || res.count || items.length;
+
+      setInternships(items);
+      setTotal(totalCount);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load internships.');
     } finally {
       setIsLoading(false);
     }
-  }, [filters, page]);
+  }, [page, filters, selectedCategory]);
 
   useEffect(() => {
     fetchInternships();
   }, [fetchInternships]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFilters((f) => ({
-      ...f,
-      search: searchInput || undefined,
-      location: locationInput || undefined,
+  const updateFilter = (key: keyof InternshipFilters, value: any) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
     }));
     setPage(1);
   };
 
-  const selectCategory = (category: string) => {
-    const newVal = selectedCategory === category ? '' : category;
+  const selectCategory = (cat: string) => {
+    const newVal = selectedCategory === cat ? '' : cat;
     setSelectedCategory(newVal);
     setSearchInput(newVal);
-    setFilters((f) => ({
-      ...f,
-      search: newVal || undefined,
-    }));
-    setPage(1);
+    updateFilter('search', newVal);
   };
 
-  const updateFilter = (key: keyof InternshipFilters, val: any) => {
-    setFilters((f) => ({
-      ...f,
-      [key]: val === '' || val === undefined ? undefined : val,
-    }));
-    setPage(1);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateFilter('search', searchInput);
+    updateFilter('location', locationInput);
   };
 
   const clearFilters = () => {
-    setFilters({ sort_by: 'created_at', sort_dir: 'desc' });
+    setFilters({
+      sort_by: 'created_at',
+      sort_dir: 'desc',
+    });
     setSearchInput('');
     setLocationInput('');
     setSelectedDuration('ALL');
@@ -204,46 +200,47 @@ function InternshipsContent() {
     setPage(1);
   };
 
-  // Client-side advanced filter for duration_weeks (since backend lacks duration filter)
+  const totalPages = Math.ceil(total / PER_PAGE);
+  const isCandidate = user?.role === 'candidate';
+  const isHR = user?.role === 'hr';
+  const isAdmin = user?.role === 'admin';
+
+  // Client-side duration filters
   const filteredInternships = useMemo(() => {
     if (selectedDuration === 'ALL') return internships;
-    
-    return internships.filter((item) => {
-      const weeks = item.duration_weeks || 0;
-      if (selectedDuration === 'SHORT') return weeks <= 8; // Under 2 months
-      if (selectedDuration === 'MEDIUM') return weeks > 8 && weeks <= 16; // 2-4 months
-      if (selectedDuration === 'LONG') return weeks > 16; // 4+ months
+    return internships.filter((job) => {
+      const weeks = job.duration_weeks || 0;
+      if (selectedDuration === 'SHORT') return weeks <= 8;
+      if (selectedDuration === 'MEDIUM') return weeks > 8 && weeks <= 16;
+      if (selectedDuration === 'LONG') return weeks > 16;
       return true;
     });
   }, [internships, selectedDuration]);
 
-  const totalPages = Math.ceil(total / PER_PAGE);
-  const isCandidate = user?.role === 'candidate' || !user?.role;
-  const canCreate = user?.role === 'hr' || user?.role === 'admin';
-
   return (
-    <div className="space-y-8 animate-fade-in font-sans text-slate-800">
-      {/* Header Panel */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-5">
+    <div className="space-y-8">
+      {/* Title Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-outfit text-slate-900">
-            Find Opportunities
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight font-outfit">
+            Internship Marketplace
           </h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">
-            Browse through {total} active internship positions on CAPVIA.
+          <p className="text-sm text-slate-500 font-semibold mt-1">
+            Discover and apply to elite, AI-verified opportunities.
           </p>
         </div>
-        {canCreate && (
-          <div className="flex gap-2">
+
+        {(isHR || isAdmin) && (
+          <div className="flex items-center gap-3">
             <Link
-              href="/internships/manage"
+              href="/hr/dashboard"
               className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all"
             >
               ⚙️ Manage Roles
             </Link>
             <Link
               href="/internships/create"
-              className="px-4 py-2.5 rounded-xl bg-[#0D47A1] hover:bg-[#0A3B85] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-xl bg-[#0D47A1] hover:bg-[#1976D2] text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
             >
               <Plus size={14} />
               Post Internship
@@ -254,39 +251,38 @@ function InternshipsContent() {
 
       {/* 1. Large Search Hero */}
       <div className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm relative overflow-hidden">
-        {/* Subtle grid pattern background */}
         <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#000_1px,transparent_1px),linear-gradient(to_bottom,#000_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
 
         <form onSubmit={handleSearchSubmit} className="relative z-10 flex flex-col lg:flex-row gap-4 items-stretch">
           <div className="flex-1 flex flex-col md:flex-row gap-3">
             {/* Role/Company Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <Search className="absolute left-4 top-4.5 h-5 w-5 text-slate-400" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search roles, skills, technologies..."
-                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-[#F8FAFC] text-slate-800 text-sm outline-none focus:border-[#0D47A1] focus:ring-1 focus:ring-[#0D47A1] transition-all"
+                className="w-full pl-12 pr-4 h-14 rounded-xl border border-slate-200 bg-[#F8FAFC] text-slate-800 text-sm outline-none focus:border-[#0D47A1] focus:ring-1 focus:ring-[#0D47A1] transition-all"
               />
             </div>
 
             {/* Location Input */}
             <div className="w-full md:w-80 relative">
-              <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <MapPin className="absolute left-4 top-4.5 h-5 w-5 text-slate-400" />
               <input
                 type="text"
                 value={locationInput}
                 onChange={(e) => setLocationInput(e.target.value)}
                 placeholder="Location (e.g. Bangalore, Remote)"
-                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 bg-[#F8FAFC] text-slate-800 text-sm outline-none focus:border-[#0D47A1] focus:ring-1 focus:ring-[#0D47A1] transition-all"
+                className="w-full pl-12 pr-4 h-14 rounded-xl border border-slate-200 bg-[#F8FAFC] text-slate-800 text-sm outline-none focus:border-[#0D47A1] focus:ring-1 focus:ring-[#0D47A1] transition-all"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="px-8 py-3.5 rounded-xl bg-[#0D47A1] hover:bg-[#0A3B85] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
+            className="px-8 h-14 rounded-xl bg-[#0D47A1] hover:bg-[#1976D2] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
           >
             <Search size={16} />
             Search Jobs
@@ -295,7 +291,7 @@ function InternshipsContent() {
 
         {/* 2. Popular Categories */}
         <div className="mt-6 border-t border-slate-100 pt-5 relative z-10">
-          <p className="text-xs font-bold text-slate-450 uppercase tracking-wider mb-3">
+          <p className="text-xs font-black text-slate-450 uppercase tracking-widest mb-3">
             Popular Categories
           </p>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1.5 flex-wrap">
@@ -306,9 +302,9 @@ function InternshipsContent() {
                   key={cat}
                   type="button"
                   onClick={() => selectCategory(cat)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all shrink-0 ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all shrink-0 ${
                     active
-                      ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
+                      ? 'bg-[#0D47A1] border-[#0D47A1] text-white font-black'
                       : 'bg-white border-slate-200 text-slate-600 hover:border-slate-350 hover:bg-slate-50'
                   }`}
                 >
@@ -326,138 +322,174 @@ function InternshipsContent() {
         <div className="hidden lg:block space-y-6">
           <div className="bg-white border border-slate-100 rounded-[20px] p-5 shadow-sm space-y-6 sticky top-24">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-              <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                <Filter size={15} className="text-[#0D47A1]" />
+              <span className="text-xs font-black uppercase tracking-widest text-slate-900 flex items-center gap-1.5">
+                <Filter size={14} className="text-[#0D47A1]" />
                 Filters
               </span>
               <button
                 onClick={clearFilters}
-                className="text-xs font-bold text-[#0D47A1] hover:text-[#0A3B85] transition-colors"
+                className="text-xs font-black text-[#0D47A1] hover:text-[#1976D2] transition-colors"
               >
                 Clear all
               </button>
             </div>
 
             {/* Work Mode */}
-            <div className="space-y-2.5">
-              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Work Mode</p>
-              <div className="flex flex-col gap-1.5">
-                {WORK_MODES.map((m) => (
-                  <button
-                    key={m.value}
-                    onClick={() => updateFilter('work_mode', filters.work_mode === m.value ? '' : m.value)}
-                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                      filters.work_mode === m.value
-                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
-                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <p className="text-xs font-black text-slate-450 uppercase tracking-wider pl-2 border-l-2 border-l-[#42A5F5]">Work Mode</p>
+              <div className="flex flex-col gap-2">
+                {WORK_MODES.map((m) => {
+                  const isSelected = filters.work_mode === m.value;
+                  return (
+                    <div
+                      key={m.value}
+                      onClick={() => updateFilter('work_mode', isSelected ? '' : m.value)}
+                      className="flex items-center gap-2.5 cursor-pointer py-1 group/opt"
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? 'bg-[#0D47A1] border-[#0D47A1] text-white' 
+                          : 'border-slate-300 bg-white group-hover/opt:border-slate-400'
+                      }`}>
+                        {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                      </div>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-slate-800' : 'text-slate-600'}`}>
+                        {m.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Experience Level */}
-            <div className="space-y-2.5">
-              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Experience</p>
-              <div className="flex flex-col gap-1.5">
-                {EXP_LEVELS.map((level) => (
-                  <button
-                    key={level.value}
-                    onClick={() => updateFilter('experience_level', filters.experience_level === level.value ? '' : level.value)}
-                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                      filters.experience_level === level.value
-                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
-                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {level.label}
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <p className="text-xs font-black text-slate-450 uppercase tracking-wider pl-2 border-l-2 border-l-[#42A5F5]">Experience</p>
+              <div className="flex flex-col gap-2">
+                {EXP_LEVELS.map((level) => {
+                  const isSelected = filters.experience_level === level.value;
+                  return (
+                    <div
+                      key={level.value}
+                      onClick={() => updateFilter('experience_level', isSelected ? '' : level.value)}
+                      className="flex items-center gap-2.5 cursor-pointer py-1 group/opt"
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? 'bg-[#0D47A1] border-[#0D47A1] text-white' 
+                          : 'border-slate-300 bg-white group-hover/opt:border-slate-400'
+                      }`}>
+                        {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                      </div>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-slate-800' : 'text-slate-600'}`}>
+                        {level.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Stipend Options */}
-            <div className="space-y-2.5">
-              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Stipend</p>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  onClick={() => updateFilter('has_stipend', filters.has_stipend === true ? undefined : true)}
-                  className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                    filters.has_stipend === true
-                      ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
-                      : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  Paid Only
-                </button>
-                <button
-                  onClick={() => updateFilter('has_stipend', filters.has_stipend === false ? undefined : false)}
-                  className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                    filters.has_stipend === false
-                      ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
-                      : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  Unpaid Only
-                </button>
+            <div className="space-y-3">
+              <p className="text-xs font-black text-slate-455 uppercase tracking-wider pl-2 border-l-2 border-l-[#42A5F5]">Stipend</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { value: true, label: 'Paid Only' },
+                  { value: false, label: 'Unpaid Only' }
+                ].map((item) => {
+                  const isSelected = filters.has_stipend === item.value;
+                  return (
+                    <div
+                      key={String(item.value)}
+                      onClick={() => updateFilter('has_stipend', isSelected ? undefined : item.value)}
+                      className="flex items-center gap-2.5 cursor-pointer py-1 group/opt"
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? 'bg-[#0D47A1] border-[#0D47A1] text-white' 
+                          : 'border-slate-300 bg-white group-hover/opt:border-slate-400'
+                      }`}>
+                        {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                      </div>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-slate-800' : 'text-slate-600'}`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Duration Filters */}
-            <div className="space-y-2.5">
-              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Duration</p>
-              <div className="flex flex-col gap-1.5">
+            <div className="space-y-3">
+              <p className="text-xs font-black text-slate-455 uppercase tracking-wider pl-2 border-l-2 border-l-[#42A5F5]">Duration</p>
+              <div className="flex flex-col gap-2">
                 {[
                   { value: 'ALL', label: 'Any Duration' },
                   { value: 'SHORT', label: 'Short (≤ 8 weeks)' },
                   { value: 'MEDIUM', label: 'Medium (8-16 weeks)' },
                   { value: 'LONG', label: 'Long (16+ weeks)' },
-                ].map((item) => (
-                  <button
-                    key={item.value}
-                    onClick={() => setSelectedDuration(item.value)}
-                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                      selectedDuration === item.value
-                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
-                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+                ].map((item) => {
+                  const isSelected = selectedDuration === item.value;
+                  return (
+                    <div
+                      key={item.value}
+                      onClick={() => setSelectedDuration(item.value)}
+                      className="flex items-center gap-2.5 cursor-pointer py-1 group/opt"
+                    >
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? 'bg-[#0D47A1] border-[#0D47A1] text-white' 
+                          : 'border-slate-300 bg-white group-hover/opt:border-slate-400'
+                      }`}>
+                        {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                      </div>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-slate-800' : 'text-slate-600'}`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Sort Options */}
-            <div className="space-y-2.5 pt-2 border-t border-slate-100">
-              <p className="text-xs font-bold text-slate-455 uppercase tracking-wider">Sort By</p>
-              <div className="flex flex-col gap-1.5">
-                {SORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => updateFilter('sort_by', opt.value)}
-                    className={`text-left px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                      filters.sort_by === opt.value
-                        ? 'bg-blue-50 border-blue-200 text-[#0D47A1] font-bold'
-                        : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <p className="text-xs font-black text-slate-455 uppercase tracking-wider pl-2 border-l-2 border-l-[#42A5F5]">Sort By</p>
+              <div className="flex flex-col gap-2">
+                {SORT_OPTIONS.map((opt) => {
+                  const isSelected = filters.sort_by === opt.value;
+                  return (
+                    <div
+                      key={opt.value}
+                      onClick={() => updateFilter('sort_by', opt.value)}
+                      className="flex items-center gap-2.5 cursor-pointer py-1 group/opt"
+                    >
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                        isSelected 
+                          ? 'bg-[#0D47A1] border-[#0D47A1] text-white' 
+                          : 'border-slate-300 bg-white group-hover/opt:border-slate-400'
+                      }`}>
+                        {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                      </div>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-slate-800' : 'text-slate-600'}`}>
+                        {opt.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Grid Content (3 Columns) */}
+        {/* Main Card Grid (3 Columns) */}
         <div className="lg:col-span-3 space-y-6">
           {/* Active Filter Tags */}
           {(filters.work_mode || filters.experience_level || filters.has_stipend !== undefined || filters.search || filters.location || selectedDuration !== 'ALL') && (
             <div className="flex gap-2 flex-wrap items-center bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1 pr-2">Active:</span>
+              <span className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1 pr-2">Active:</span>
               
               {filters.search && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-bold text-slate-700">
@@ -507,24 +539,21 @@ function InternshipsContent() {
 
           {/* Skeletons Loading State */}
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-5">
-              {[...Array(4)].map((_, idx) => (
-                <div key={idx} className="bg-white border border-slate-100 rounded-3xl p-6 h-52 animate-pulse flex flex-col justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, idx) => (
+                <div key={idx} className="bg-white border border-slate-100 rounded-3xl p-6 h-64 animate-pulse flex flex-col justify-between">
                   <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex-shrink-0" />
+                    <div className="w-12 h-12 bg-slate-100 rounded-lg flex-shrink-0" />
                     <div className="flex-1 space-y-2">
                       <div className="h-4 bg-slate-100 rounded-full w-2/3" />
                       <div className="h-3 bg-slate-50 rounded-full w-1/3" />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="h-3 bg-slate-50 rounded-full w-full" />
-                    <div className="h-3 bg-slate-50 rounded-full w-4/5" />
+                    <div className="h-3 bg-slate-55 rounded-full w-full" />
+                    <div className="h-3 bg-slate-55 rounded-full w-4/5" />
                   </div>
-                  <div className="flex justify-between items-center border-t border-slate-50 pt-4 mt-2">
-                    <div className="h-4 bg-slate-100 rounded-full w-24" />
-                    <div className="h-8 bg-slate-100 rounded-lg w-28" />
-                  </div>
+                  <div className="h-8 bg-slate-100 rounded-full w-full mt-4" />
                 </div>
               ))}
             </div>
@@ -544,8 +573,8 @@ function InternshipsContent() {
               </button>
             </div>
           ) : (
-            /* Cards Grid */
-            <div className="grid grid-cols-1 gap-5">
+            /* Cards Grid - 3 Columns layout on desktop */
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               <AnimatePresence>
                 {filteredInternships.map((job) => {
                   const isSaved = savedIds.includes(job.id);
@@ -563,134 +592,103 @@ function InternshipsContent() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      whileHover={{ y: -2 }}
+                      whileHover={{ y: -4 }}
                       transition={{ duration: 0.15 }}
                       onClick={() => router.push(`/internships/${job.id}`)}
-                      className="bg-white border border-slate-150/70 hover:border-slate-350 rounded-[22px] p-6 hover:shadow-soft transition-all cursor-pointer flex flex-col justify-between gap-4 group"
+                      className="bg-white border border-slate-100 hover:border-slate-200 rounded-[20px] p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[280px] group relative"
                     >
-                      <div className="flex items-start gap-4">
-                        {/* Company Logo */}
-                        <div className="flex-shrink-0">
-                          {job.company_logo ? (
-                            <img
-                              src={job.company_logo}
-                              alt={job.company_name}
-                              className="w-12 h-12 rounded-xl object-cover border border-slate-100"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-extrabold text-[#0D47A1] text-lg uppercase">
-                              {(job.company_name || 'C')[0]}
-                            </div>
-                          )}
+                      <div className="space-y-4">
+                        {/* Company Logo Square Badge & Bookmark Button */}
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="w-12 h-12 rounded-lg bg-[#0D47A1]/10 border border-[#0D47A1]/20 flex items-center justify-center font-black text-[#0D47A1] text-lg uppercase shrink-0">
+                            {(job.company_name || 'C')[0]}
+                          </div>
+                          
+                          <button
+                            onClick={(e) => toggleSave(job, e)}
+                            className={`p-2 rounded-lg border transition-all ${
+                              isSaved
+                                ? 'bg-[#FFC107]/10 border-[#FFC107]/30 text-[#F57F17]'
+                                : 'bg-slate-50 border-slate-150 text-slate-450 hover:text-slate-700 hover:bg-slate-100'
+                            }`}
+                            aria-label={isSaved ? 'Remove bookmark' : 'Bookmark job'}
+                          >
+                            <Bookmark size={15} fill={isSaved ? 'currentColor' : 'none'} />
+                          </button>
                         </div>
 
-                        {/* Card Text Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-4">
-                            <h3 className="text-base font-bold text-slate-900 truncate hover:text-[#0D47A1] transition-colors font-outfit">
-                              {job.title}
-                            </h3>
-                            <button
-                              onClick={(e) => toggleSave(job, e)}
-                              className={`p-2 rounded-lg border transition-all ${
-                                isSaved
-                                  ? 'bg-[#FFC107]/10 border-[#FFC107]/30 text-[#F57F17]'
-                                  : 'bg-slate-50 border-slate-150 text-slate-450 hover:text-slate-700 hover:bg-slate-100'
-                              }`}
-                              aria-label={isSaved ? 'Remove bookmark' : 'Bookmark job'}
-                            >
-                              <Bookmark size={15} fill={isSaved ? 'currentColor' : 'none'} />
-                            </button>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 mt-1 text-xs">
-                            <span className="font-bold text-[#0D47A1] hover:underline">
+                        {/* Title & Info */}
+                        <div className="space-y-1">
+                          <h3 className="text-sm font-black text-slate-800 line-clamp-2 font-outfit tracking-tight group-hover:text-[#0D47A1] transition-colors leading-snug">
+                            {job.title}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-x-2 text-[10px] font-bold">
+                            <span className="text-[#0D47A1] uppercase tracking-wide">
                               {job.company_name}
                             </span>
                             <span className="text-slate-300">•</span>
-                            <span className="flex items-center gap-1 text-slate-500 font-semibold">
-                              <MapPin size={13} className="text-slate-400" />
+                            <span className="text-slate-400 uppercase tracking-wide">
                               {job.location || 'Remote'}
-                            </span>
-                            <span className="text-slate-300">•</span>
-                            <span className="inline-flex items-center gap-1 text-[#0D47A1] font-extrabold bg-blue-50/70 px-2 py-0.5 rounded-md">
-                              {job.work_mode}
                             </span>
                           </div>
                         </div>
+
+                        {/* Required Skills - Dark data pills */}
+                        {job.required_skills && job.required_skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {job.required_skills.slice(0, 3).map((skill) => (
+                              <span
+                                key={skill}
+                                className="px-2.5 py-0.5 text-[8px] font-black bg-[#08152E] text-white border border-[#42A5F5]/10 rounded-full"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {job.required_skills.length > 3 && (
+                              <span className="text-[9px] text-[#42A5F5] font-black px-1">
+                                +{job.required_skills.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Required Skills Row */}
-                      {job.required_skills && job.required_skills.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {job.required_skills.slice(0, 4).map((skill) => (
-                            <span
-                              key={skill}
-                              className="px-2.5 py-1 text-[10px] font-bold bg-slate-50 border border-slate-150/50 text-slate-600 rounded-md"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                          {job.required_skills.length > 4 && (
-                            <span className="text-[10px] text-slate-450 font-semibold px-1 py-0.5">
-                              +{job.required_skills.length - 4} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-
                       {/* Card Footer Details */}
-                      <div className="flex flex-wrap justify-between items-center gap-4 pt-4 border-t border-slate-100 mt-2">
-                        {/* Stipend and Duration info */}
-                        <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
-                          {job.stipend_min ? (
-                            <span className="flex items-center gap-1 text-emerald-650 font-bold">
-                              <DollarSign size={14} className="text-emerald-500" />
-                              {job.stipend_currency} {job.stipend_min.toLocaleString()}
-                              {job.stipend_max ? ` - ${job.stipend_max.toLocaleString()}` : ''}/mo
+                      <div className="space-y-3 pt-3 border-t border-slate-100">
+                        {/* Stipend, Duration, and Apply Button Row */}
+                        <div className="flex justify-between items-center gap-2">
+                          <div className="flex flex-col text-[10px] font-bold text-slate-400">
+                            {job.stipend_min ? (
+                              <span className="text-slate-800 font-extrabold text-xs">
+                                ₹{job.stipend_min.toLocaleString()}
+                                {job.stipend_max ? ` - ${job.stipend_max.toLocaleString()}` : ''}/mo
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">Unpaid</span>
+                            )}
+                            <span className="text-[8px] text-slate-400 mt-0.5">
+                              ⌛ {job.duration_weeks ? `${job.duration_weeks} weeks` : 'TBD'}
                             </span>
-                          ) : (
-                            <span className="text-slate-400">Unpaid Internship</span>
-                          )}
-                          <span className="text-slate-200">|</span>
-                          <span className="flex items-center gap-1">
-                            <Clock size={13} className="text-slate-400" />
-                            {job.duration_weeks ? `${job.duration_weeks} weeks` : 'Duration TBD'}
-                          </span>
-                        </div>
+                          </div>
 
-                        {/* Interactive Buttons */}
-                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Link
-                            href={`/internships/${job.id}`}
-                            className="px-4 py-2 rounded-xl text-xs font-bold text-[#0D47A1] hover:bg-blue-50 transition-colors"
-                          >
-                            View Details
-                          </Link>
-                          {isCandidate && (
-                            <div className="w-36 shrink-0">
+                          <div onClick={(e) => e.stopPropagation()} className="w-24">
+                            {isCandidate ? (
                               <ApplyButton
                                 internshipId={job.id}
                                 internshipTitle={job.title}
                                 isDeadlinePassed={job.is_deadline_passed}
                                 onSuccess={(appId) => router.push(`/applications/${appId}`)}
                               />
-                            </div>
-                          )}
+                            ) : (
+                              <Link
+                                href={`/internships/${job.id}`}
+                                className="w-full block py-2 text-center bg-[#0D47A1] hover:bg-[#1976D2] text-white font-bold text-[10px] rounded-full transition-colors"
+                              >
+                                Details
+                              </Link>
+                            )}
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Applicants & Posted stats */}
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold mt-1">
-                        <div className="flex items-center gap-3">
-                          <span>📨 {job.application_count} Applicants</span>
-                          <span>👁 {job.view_count} Views</span>
-                        </div>
-                        {deadlineDate && (
-                          <span className={job.is_deadline_passed ? 'text-red-550' : 'text-slate-400'}>
-                            {job.is_deadline_passed ? 'Expired' : `Deadline: ${deadlineDate}`}
-                          </span>
-                        )}
                       </div>
                     </motion.div>
                   );
@@ -699,11 +697,11 @@ function InternshipsContent() {
 
               {/* Pagination controls */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 pt-6 border-t border-slate-100 mt-8">
+                <div className="col-span-full flex justify-center items-center gap-3 pt-6 border-t border-slate-100 mt-8">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-4 py-2 rounded-xl border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     ← Previous
                   </button>
@@ -713,7 +711,7 @@ function InternshipsContent() {
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="px-4 py-2 rounded-xl border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     Next →
                   </button>

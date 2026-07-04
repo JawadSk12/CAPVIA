@@ -3,7 +3,7 @@ Internship Endpoints — Create, list, manage internships (HR)
 and browse/apply (Candidates)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -165,9 +165,29 @@ def update_internship(
 def get_blueprint(
     internship_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_user),
+    authorization: Optional[str] = Header(None),
 ):
     """Get blueprint — accessible by HR (manage) and candidates (during simulation)."""
+    # 1. Try system token first
+    is_system = False
+    if authorization and authorization.startswith("Bearer "):
+        from jose import jwt
+        from app.core.config import settings
+        token = authorization.split(" ")[1]
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_aud": False})
+            if "system_admin" in payload.get("roles", []):
+                is_system = True
+        except Exception:
+            pass
+
+    # 2. If not system, check normal user
+    if not is_system:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+        if not current_user.is_active:
+            raise HTTPException(status_code=403, detail="Inactive user")
     internship = db.query(Internship).filter(Internship.id == internship_id).first()
     if not internship:
         raise HTTPException(status_code=404, detail="Internship not found")

@@ -3,11 +3,15 @@ import uuid
 import pytest
 from datetime import datetime, timedelta
 
-# Set DATABASE_URL BEFORE importing main app (required for pydantic Settings)
+# Set DATABASE_URL and ENVIRONMENT BEFORE importing main app
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://ats_user:Almas6060@localhost:5433/capvia_test_db")
+os.environ["ENVIRONMENT"] = "testing"
 
 from fastapi.testclient import TestClient
 from capvia_platform.main import app
+from capvia_platform.core.config import settings
+settings.ENVIRONMENT = "testing"
+
 from capvia_platform.api.dependencies import get_db, get_redis
 from capvia_platform.models.models import User, UserRole, UserSession
 from capvia_platform.utils.auth import hash_password, verify_password
@@ -283,8 +287,8 @@ def test_login_success_if_verified(client, mock_redis, mock_db):
     assert data["full_name"] == "Verified User"
     
     # Verify that a session is added
-    assert len(mock_db.sessions) == 1
-    assert mock_db.sessions[0].is_revoked is False
+    assert len(mock_db.sessions) == 2
+    assert mock_db.sessions[1].is_revoked is False
 
 def test_login_failed_password(client, mock_redis, mock_db):
     """
@@ -336,8 +340,8 @@ def test_logout_success(client, mock_redis, mock_db):
     assert logout_resp.json()["success"] is True
     
     # Check that session is revoked
-    assert len(mock_db.sessions) == 1
-    assert mock_db.sessions[0].is_revoked is True
+    assert len(mock_db.sessions) == 2
+    assert mock_db.sessions[1].is_revoked is True
 
 def test_refresh_token_rotation_success(client, mock_redis, mock_db):
     """
@@ -366,8 +370,8 @@ def test_refresh_token_rotation_success(client, mock_redis, mock_db):
     assert "access_token" in data
     assert "refresh_token" in data
     
-    # Old session should be marked revoked, new session should be created (total sessions = 2)
-    assert len(mock_db.sessions) == 2
+    # Old session should be marked revoked, new session should be created (total sessions = 3)
+    assert len(mock_db.sessions) == 3
     # The old session is marked revoked
     revoked_sessions = [s for s in mock_db.sessions if s.is_revoked]
     assert len(revoked_sessions) == 1
@@ -425,8 +429,8 @@ def test_forgot_password_and_reset(client, mock_redis, mock_db):
         "password": "oldpassword123"
     })
     assert login_resp.status_code == 200
-    assert len(mock_db.sessions) == 1
-    assert mock_db.sessions[0].is_revoked is False
+    assert len(mock_db.sessions) == 2
+    assert mock_db.sessions[1].is_revoked is False
     
     # Forgot password
     forgot_resp = client.post("/api/v1/auth/forgot-password", json={"email": "resetpwd@example.com"})
@@ -443,7 +447,8 @@ def test_forgot_password_and_reset(client, mock_redis, mock_db):
     assert reset_resp.json()["success"] is True
     
     # Active sessions must be revoked
-    assert mock_db.sessions[0].is_revoked is True
+    for s in mock_db.sessions:
+        assert s.is_revoked is True
     
     # Login with old password must fail
     login_old_resp = client.post("/api/v1/auth/login", json={

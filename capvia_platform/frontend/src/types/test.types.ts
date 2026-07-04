@@ -1,4 +1,5 @@
-export { QuestionType, DifficultyLevel, SessionStatus } from './common.types';
+import { QuestionType, DifficultyLevel, SessionStatus } from './common.types';
+export { QuestionType, DifficultyLevel, SessionStatus };
 
 export interface Question {
   id: number;

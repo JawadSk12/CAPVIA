@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 async def test_mongo():
-    uri = os.getenv("MONGO_URL")
-    print(f"Connecting to: {uri[:30]}...")
+    from config import settings
+    uri = settings.MONGO_URL
+    print(f"Connecting to: {uri[:40]}...")
     client = AsyncIOMotorClient(uri, serverSelectionTimeoutMS=5000)
     try:
         await client.admin.command('ping')

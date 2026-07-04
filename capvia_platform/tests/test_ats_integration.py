@@ -282,9 +282,11 @@ def test_full_ats_integration_lifecycle():
             # Mock ats_connector calls
             mock_upload = AsyncMock(return_value=str(uuid.uuid4()))
             mock_compare = AsyncMock(return_value={"status": "PROCESSING"})
+            mock_status = AsyncMock(return_value={"status": "DONE"})
             
             with patch("capvia_platform.services.ats_connector.ats_connector.upload_resume", mock_upload), \
                  patch("capvia_platform.services.ats_connector.ats_connector.compare_resume", mock_compare), \
+                 patch("capvia_platform.services.ats_connector.ats_connector.get_resume_status", mock_status), \
                  patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_resume_download:
                  
                 # Mock download response

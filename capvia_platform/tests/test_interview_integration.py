@@ -336,7 +336,7 @@ def test_full_interview_integration_lifecycle():
                 proctoring_violations_count=0,
                 proctoring_details={"phone_detected": False, "gaze_direction": "CENTER"}
             )
-            ans_resp_0 = await save_interview_answer(ans_payload_0, candidate_claims, db_session)
+            ans_resp_0 = await save_interview_answer(ans_payload_0, candidate, db_session)
             assert ans_resp_0.success is True
 
             # Answer 1 (with look away violation)
@@ -347,7 +347,7 @@ def test_full_interview_integration_lifecycle():
                 proctoring_violations_count=1,
                 proctoring_details={"phone_detected": False, "gaze_direction": "LEFT"}
             )
-            ans_resp_1 = await save_interview_answer(ans_payload_1, candidate_claims, db_session)
+            ans_resp_1 = await save_interview_answer(ans_payload_1, candidate, db_session)
             assert ans_resp_1.success is True
 
             # 4. Complete Interview Endpoint (Trigger Background Evaluation)
@@ -369,7 +369,7 @@ def test_full_interview_integration_lifecycle():
                     local_violations_json=json.dumps({"tabSwitches": 1, "copyPastes": 0}),
                     baselined_locally=False,
                     local_evaluation_report_json=None,
-                    candidate_claims=candidate_claims,
+                    current_user=candidate,
                     db=db_session
                 )
                 
@@ -430,7 +430,7 @@ def test_full_interview_integration_lifecycle():
                 local_violations_json=json.dumps({"tabSwitches": 1, "copyPastes": 0}),
                 baselined_locally=True,
                 local_evaluation_report_json=json.dumps(local_report),
-                candidate_claims=candidate_claims,
+                current_user=candidate,
                 db=db_session
             )
             

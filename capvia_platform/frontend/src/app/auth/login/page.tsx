@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../store/auth';
 import { authApi } from '../../../services/api';
-import { LogIn, Mail, Lock, AlertCircle, Eye, EyeOff, BrainCircuit, CheckCircle2 } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, Eye, EyeOff, BrainCircuit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function LoginPage() {
@@ -69,69 +69,97 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white text-gray-900 flex">
-      {/* Left Section - Branding & Illustration */}
-      <div className="hidden lg:flex w-1/2 bg-[#0D47A1] relative flex-col justify-between p-12 overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-[#42A5F5]/30 via-transparent to-transparent pointer-events-none" />
+    <main className="min-h-screen bg-[#F8FAFC] text-gray-900 flex">
+      {/* Left Section - Deep Navy Brand Experience */}
+      <div className="hidden lg:flex w-1/2 bg-[#08152E] relative flex-col justify-between p-12 overflow-hidden border-r border-[#42A5F5]/10">
+        {/* Circuit board grid & trace lines */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(66, 165, 245, 0.15)" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+            <path d="M 50 100 L 200 100 L 250 150 L 400 150 L 450 200 L 600 200" fill="none" stroke="rgba(66, 165, 245, 0.4)" strokeWidth="2" strokeDasharray="10 15" className="animate-draw" />
+            <path d="M 100 500 L 250 500 L 300 450 L 450 450 L 500 400 L 650 400" fill="none" stroke="rgba(66, 165, 245, 0.4)" strokeWidth="2" strokeDasharray="10 15" className="animate-draw" />
+            <circle cx="200" cy="100" r="4" fill="#42A5F5" />
+            <circle cx="250" cy="150" r="4" fill="#42A5F5" />
+            <circle cx="450" cy="200" r="4" fill="#42A5F5" />
+            <circle cx="300" cy="450" r="4" fill="#42A5F5" />
+            <circle cx="500" cy="400" r="4" fill="#42A5F5" />
+          </svg>
+        </div>
         
+        {/* Brand Header */}
         <div className="relative z-10">
-          <Link href="/" className="inline-flex items-center space-x-2">
-            <div className="bg-white p-2 rounded-xl">
-              <BrainCircuit className="h-8 w-8 text-[#0D47A1]" />
+          <Link href="/" className="inline-flex items-center space-x-2.5">
+            <div className="bg-[#0D47A1] p-2.5 rounded-2xl shadow-lg border border-[#42A5F5]/35">
+              <BrainCircuit className="h-8 w-8 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight font-outfit">CAPVIA</span>
+            <span className="text-2xl font-black text-white tracking-tight font-outfit">CAPVIA</span>
           </Link>
         </div>
 
-        <div className="relative z-10 max-w-lg mb-24">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-6"
-          >
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white font-outfit leading-tight">
-              The Intelligent Way to <span className="text-[#FFC107]">Hire</span>
-            </h1>
-            <p className="text-blue-100 text-lg font-inter">
-              Experience the world's most advanced AI-powered hiring platform. Automate screening, eliminate bias, and discover top talent faster.
-            </p>
-
-            <div className="space-y-4 pt-8">
+        {/* Center - Visual Assessment Pipeline */}
+        <div className="relative z-10 flex flex-col items-center justify-center flex-grow space-y-8">
+          <div className="flex flex-col items-center space-y-6 bg-slate-900/60 backdrop-blur-md p-8 rounded-3xl border border-white/10 shadow-2xl w-full max-w-md">
+            <span className="text-xs font-bold text-[#42A5F5] uppercase tracking-widest">Verification Pipeline</span>
+            <div className="flex items-center justify-between w-full relative">
+              {/* Connector Line */}
+              <div className="absolute top-[18px] left-6 right-6 h-0.5 bg-slate-800 -z-10 overflow-hidden">
+                <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-[#42A5F5] to-transparent animate-[shimmer_2s_infinite]" />
+              </div>
+              
               {[
-                'Proctoring & Integrity Enforcement',
-                'Algorithmic DNA Profiling',
-                'Automated Technical Interviews'
-              ].map((feature, idx) => (
-                <div key={idx} className="flex items-center space-x-3 text-blue-50">
-                  <CheckCircle2 className="h-5 w-5 text-[#42A5F5]" />
-                  <span className="font-medium">{feature}</span>
+                { label: 'Apply', icon: '📝', active: true },
+                { label: 'Screen', icon: '🔍', active: true },
+                { label: 'Simulate', icon: '💻', active: true, pulse: true },
+                { label: 'Interview', icon: '📹', active: false },
+                { label: 'Verify', icon: '🛡️', active: false },
+                { label: 'Hire', icon: '🎉', active: false }
+              ].map((step, idx) => (
+                <div key={idx} className="flex flex-col items-center space-y-2">
+                  <div className={`relative w-9 h-9 rounded-full flex items-center justify-center text-sm border-2 ${
+                    step.pulse 
+                      ? 'border-[#42A5F5] bg-[#0D47A1]/40 text-white shadow-[0_0_15px_rgba(66,165,245,0.4)] animate-pulse'
+                      : step.active
+                        ? 'border-[#42A5F5] bg-[#0D47A1] text-white'
+                        : 'border-slate-800 bg-slate-950 text-slate-600'
+                  }`}>
+                    <span>{step.icon}</span>
+                    {step.pulse && (
+                      <span className="absolute -inset-1 rounded-full border border-[#42A5F5] opacity-75 animate-ping" />
+                    )}
+                  </div>
+                  <span className={`text-[9px] font-bold tracking-wider uppercase ${step.active || step.pulse ? 'text-blue-200' : 'text-slate-650'}`}>
+                    {step.label}
+                  </span>
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         </div>
         
-        {/* Decorative elements */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/3 w-[600px] h-[600px] rounded-full border border-white/10 pointer-events-none" />
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/4 w-[400px] h-[400px] rounded-full border border-white/10 pointer-events-none" />
+        {/* Footer Brand Tagline */}
+        <div className="relative z-10 border-t border-white/5 pt-6">
+          <p className="text-slate-400 text-xs font-semibold tracking-wide uppercase">AI-VERIFIED INTERNSHIPS & CAREERS</p>
+        </div>
       </div>
 
-      {/* Right Section - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
+      {/* Right Section - Login Form with Faint Tint */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative bg-[#0D47A1]/3">
         <div className="w-full max-w-md space-y-8">
           
           <div className="text-center lg:text-left space-y-2">
-            <Link href="/" className="lg:hidden inline-flex items-center justify-center space-x-2 mb-6">
+            <Link href="/" className="lg:hidden inline-flex items-center justify-center space-x-2.5 mb-6">
               <div className="bg-[#0D47A1] p-2 rounded-xl">
                 <BrainCircuit className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-bold text-[#0D47A1] tracking-tight font-outfit">CAPVIA</span>
+              <span className="text-2xl font-black text-[#0D47A1] tracking-tight font-outfit">CAPVIA</span>
             </Link>
-            <h2 className="text-3xl font-bold text-gray-900 font-outfit">Welcome Back</h2>
-            <p className="text-gray-500 font-inter text-sm">Sign in to your account to continue</p>
+            <h2 className="text-3xl font-black text-slate-900 font-outfit tracking-tight">Welcome Back</h2>
+            <p className="text-slate-500 font-inter text-sm font-medium">Sign in to your account to continue</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -149,10 +177,10 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
 
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</label>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-xs uppercase font-bold tracking-widest text-slate-500">Email Address</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
@@ -163,20 +191,20 @@ export default function LoginPage() {
                   placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-[16px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/20 focus:border-[#0D47A1] transition-shadow shadow-sm"
+                  className="block w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-full text-slate-900 placeholder-slate-400 focus:outline-none focus:border-l-4 focus:border-l-[#42A5F5] focus:border-slate-350 focus:ring-4 focus:ring-[#42A5F5]/10 transition-all shadow-sm text-sm"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</label>
-                <Link href="/auth/forgot-password" className="text-sm font-medium text-[#42A5F5] hover:text-[#0D47A1] transition-colors" tabIndex={-1}>
+                <label htmlFor="password" className="text-xs uppercase font-bold tracking-widest text-slate-500">Password</label>
+                <Link href="/auth/forgot-password" className="text-xs font-bold text-[#42A5F5] hover:text-[#0D47A1] transition-colors" tabIndex={-1}>
                   Forgot Password?
                 </Link>
               </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
@@ -186,12 +214,12 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-11 pr-12 py-3 bg-white border border-gray-200 rounded-[16px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/20 focus:border-[#0D47A1] transition-shadow shadow-sm"
+                  className="block w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-full text-slate-900 placeholder-slate-400 focus:outline-none focus:border-l-4 focus:border-l-[#42A5F5] focus:border-slate-350 focus:ring-4 focus:ring-[#42A5F5]/10 transition-all shadow-sm text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -205,9 +233,9 @@ export default function LoginPage() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-[#0D47A1] focus:ring-[#0D47A1] border-gray-300 rounded"
+                className="h-4 w-4 text-[#0D47A1] focus:ring-[#0D47A1] border-slate-300 rounded cursor-pointer"
               />
-              <label htmlFor="remember_me" className="ml-2 block text-sm text-gray-600">
+              <label htmlFor="remember_me" className="ml-2 block text-xs font-semibold text-slate-600 cursor-pointer">
                 Remember me for 30 days
               </label>
             </div>
@@ -216,7 +244,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="relative w-full flex items-center justify-center py-3.5 px-4 border border-transparent rounded-[16px] shadow-sm text-sm font-bold text-white bg-[#0D47A1] hover:bg-[#0A367A] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0D47A1] transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
+                className="relative w-full flex items-center justify-center py-3.5 px-4 border border-transparent rounded-full shadow-lg shadow-[#0D47A1]/20 text-sm font-bold text-white bg-[#0D47A1] hover:bg-[#1976D2] hover:shadow-xl hover:shadow-[#0D47A1]/35 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
               >
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
                 {loading ? (
@@ -230,14 +258,13 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Simulated Google Login as per request */}
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
+                  <div className="w-full border-t border-slate-200" />
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500 font-inter">Or continue with</span>
+                <div className="relative flex justify-center text-xs font-semibold">
+                  <span className="px-3 bg-[#F8FAFC] text-slate-500 font-inter uppercase tracking-wide">Or continue with</span>
                 </div>
               </div>
 
@@ -245,7 +272,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowGoogleModal(true)}
-                  className="w-full flex justify-center items-center py-3 px-4 border border-gray-200 rounded-[16px] shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
+                  className="w-full flex justify-center items-center py-3.5 px-4 border border-slate-200 rounded-full shadow-sm bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#42A5F5] transition-colors"
                 >
                   <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -260,9 +287,9 @@ export default function LoginPage() {
             
           </form>
 
-          <p className="text-center text-sm text-gray-600 font-inter">
+          <p className="text-center text-sm text-slate-600 font-inter font-medium">
             Don't have an account?{' '}
-            <Link href="/auth/register" className="font-semibold text-[#0D47A1] hover:text-[#42A5F5] transition-colors">
+            <Link href="/auth/register" className="font-bold text-[#0D47A1] hover:text-[#42A5F5] transition-colors">
               Sign up
             </Link>
           </p>
@@ -345,7 +372,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowGoogleModal(false)}
-              className="w-full py-3 text-center text-xs font-bold border border-slate-200 rounded-[16px] hover:bg-slate-50 text-slate-500 transition-colors"
+              className="w-full py-3.5 text-center text-xs font-bold border border-slate-200 rounded-full hover:bg-slate-50 text-slate-500 transition-colors"
             >
               Cancel
             </button>
@@ -355,4 +382,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

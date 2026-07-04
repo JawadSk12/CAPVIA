@@ -1,7 +1,20 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from typing import Any, Dict, List, Optional, Annotated
+from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
+import re
 from capvia_platform.models.models import RiskLevel, RecommendationType, ApplicationStatus
+
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
+def validate_email_lenient(v: Any) -> str:
+    if not isinstance(v, str):
+        raise ValueError("email must be a string")
+    v = v.strip()
+    if not EMAIL_REGEX.match(v):
+        raise ValueError("value is not a valid email address")
+    return v
+
+LenientEmail = Annotated[str, BeforeValidator(validate_email_lenient)]
 
 # =========================================================================
 # ATS Engine Schemas
@@ -36,7 +49,7 @@ class ATSResultResponse(BaseModel):
 class CandidateRegisterRequest(BaseModel):
     external_application_uuid: str
     external_candidate_uuid: str
-    email: EmailStr
+    email: LenientEmail
     full_name: str
     skills_from_resume: List[str]
 
@@ -204,7 +217,7 @@ class InterviewEvaluatedWebhook(BaseModel):
 # =========================================================================
 
 class UserRegisterRequest(BaseModel):
-    email: EmailStr
+    email: LenientEmail
     password: str = Field(..., min_length=8)
     full_name: str
     role: Optional[str] = "candidate"
@@ -213,7 +226,7 @@ class UserRegisterRequest(BaseModel):
 
 
 class UserLoginRequest(BaseModel):
-    email: EmailStr
+    email: LenientEmail
     password: str
 
 class TokenResponse(BaseModel):
@@ -224,10 +237,10 @@ class TokenResponse(BaseModel):
     full_name: str
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: LenientEmail
 
 class ResetPasswordRequest(BaseModel):
     token: str
