@@ -90,8 +90,9 @@ services:
         value: "CAPVIA ATS"
 
   # 7. Simulation Candidate UI (Vite Static Site)
-  - type: static
+  - type: web
     name: capvia-simulation-ui
+    env: static
     repo: https://github.com/JawadSk12/CAPVIA
     branch: main
     rootDir: ai_simulation/frontend
