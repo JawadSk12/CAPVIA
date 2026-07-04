@@ -92,12 +92,12 @@ services:
   # 7. Simulation Candidate UI (Vite Static Site)
   - type: web
     name: capvia-simulation-ui
-    env: static
+    runtime: static
     repo: https://github.com/JawadSk12/CAPVIA
     branch: main
     rootDir: ai_simulation/frontend
     buildCommand: npm install && npm run build
-    publishDir: dist
+    staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
         sync: false
