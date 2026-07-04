@@ -1,0 +1,166 @@
+services:
+  # 1. CAPVIA Central Gateway API
+  - type: web
+    name: capvia-gateway
+    env: python
+    plan: free
+    repo: https://github.com/JawadSk12/CAPVIA
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r capvia_platform/requirements.txt
+    startCommand: PYTHONPATH=. uvicorn capvia_platform.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - fromGroup: capvia-shared-env
+      - key: PORT
+        value: 10000
+
+  # 2. ATS Resume Backend API
+  - type: web
+    name: capvia-ats-backend
+    env: python
+    plan: free
+    repo: https://github.com/JawadSk12/CAPVIA
+    branch: main
+    rootDir: ats_resume/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: PYTHONPATH=".:../ai_engine" uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - fromGroup: capvia-shared-env
+      - key: PORT
+        value: 10001
+
+  # 3. Simulation Backend API
+  - type: web
+    name: capvia-simulation-backend
+    env: python
+    plan: free
+    repo: https://github.com/JawadSk12/CAPVIA
+    branch: main
+    rootDir: ai_simulation/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - fromGroup: capvia-shared-env
+      - key: PORT
+        value: 10002
+
+  # 4. Interview Evaluation API
+  - type: web
+    name: capvia-interview-backend
+    env: python
+    plan: free
+    repo: https://github.com/JawadSk12/CAPVIA
+    branch: main
+    rootDir: ai_interview
+    buildCommand: pip install -r requirements_ai.txt
+    startCommand: PYTHONPATH=. python evaluation_server.py
+    envVars:
+      - fromGroup: capvia-shared-env
+      - key: PORT
+        value: 10003
+
+  # 5. Recruiter Dashboard UI (Next.js)
+  - type: web
+    name: capvia-recruiter-ui
+    env: node
+    plan: free
+    repo: https://github.com/JawadSk12/CAPVIA
+    branch: main
+    rootDir: capvia_platform/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - fromGroup: capvia-shared-env
+
+  # 6. ATS Candidate UI (Next.js)
+  - type: web
+    name: capvia-ats-ui
+    env: node
+    plan: free
+    repo: https://github.com/JawadSk12/CAPVIA
+    branch: main
+    rootDir: ats_resume/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+        value: https://ats-api.capvia.in
+      - key: NEXT_PUBLIC_APP_NAME
+        value: "CAPVIA ATS"
+
+  # 7. Simulation Candidate UI (Vite Static Site)
+  - type: static
+    name: capvia-simulation-ui
+    repo: https://github.com/JawadSk12/CAPVIA
+    branch: main
+    rootDir: ai_simulation/frontend
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+        value: https://simulation-api.capvia.in/api/v1
+
+envVarGroups:
+  - name: capvia-shared-env
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: ENVIRONMENT
+        value: production
+      - key: NODE_ENV
+        value: production
+      - key: SECRET_KEY
+        sync: false
+        placeholder: "Paste a secure random 64-char key"
+      - key: DATABASE_URL
+        sync: false
+        placeholder: "Paste your Neon Postgres Connection URL"
+      - key: REDIS_URL
+        sync: false
+        placeholder: "Paste your Upstash Redis Connect String"
+      - key: MONGO_URL
+        sync: false
+        placeholder: "Paste your MongoDB Atlas Connection String"
+      - key: MONGO_DB_NAME
+        value: "capvia_ats"
+      - key: OPENAI_API_KEY
+        sync: false
+        placeholder: "Paste your OpenAI API Key"
+      - key: OPENAI_MODEL
+        value: "gpt-4"
+      - key: SUPABASE_URL
+        sync: false
+        placeholder: "Paste your Supabase URL"
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+        placeholder: "Paste your Supabase Anon key"
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+        placeholder: "Paste your Supabase Service role key"
+      - key: RESEND_API_KEY
+        sync: false
+        placeholder: "Paste your Resend API Key"
+      - key: FROM_EMAIL
+        value: "noreply@capvia.in"
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://api.capvia.in/api/v1"
+      - key: ATS_ENGINE_URL
+        value: "https://ats-api.capvia.in"
+      - key: SIMULATION_ENGINE_URL
+        value: "https://simulation-api.capvia.in"
+      - key: INTERVIEW_ENGINE_URL
+        value: "https://interview-api.capvia.in"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+        placeholder: "Paste your Supabase URL"
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+        placeholder: "Paste your Supabase Anon key"
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+        placeholder: "Paste your Upstash Redis REST URL"
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+        placeholder: "Paste your Upstash Redis REST Token"

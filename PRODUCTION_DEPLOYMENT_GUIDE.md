@@ -1,15 +1,16 @@
 # CAPVIA Production Deployment Guide (Domain: capvia.in)
 
-Choose one of the two options below to deploy the entire CAPVIA platform:
+Choose one of the three options below to deploy the entire CAPVIA platform:
 
-* **[OPTION A: 1-Click VPS Script (Easiest & Highly Recommended)](#option-a-1-click-vps-deployment)**: Run all 7 services on a single $4/month Linux server (DigitalOcean, Vultr, etc.) with automatic SSL certificates, single IP mapping, and zero dashboard setup complexity.
-* **[OPTION B: Vercel & Render (Multi-Service Multi-Dashboard)](#option-b-vercel--render-multi-service-deployment)**: Distribute services across multiple serverless and container hosts.
+* **[OPTION A: 1-Click VPS Script (Easiest Local/VPS Hosting)](#option-a-1-click-vps-deployment)**: Run all 7 services on a single $4/month Linux server (DigitalOcean, Vultr, etc.) with automatic SSL certificates, single IP mapping, and zero dashboard setup complexity.
+* **[OPTION B: 1-Click Render Blueprint (Easiest Cloud/PaaS Hosting)](#option-b-1-click-render-blueprint-deployment)**: Automatically provision all 7 services on Render using a single configuration file (`render.yaml`). Enter your environment variables **only once** on one screen, and Render will deploy the entire network.
+* **[OPTION C: Manual Vercel & Render Setup (Multi-Service Multi-Dashboard)](#option-c-manual-vercel--render-setup)**: Manually configure individual projects across Vercel and Render dashboards.
 
 ---
 
 ## OPTION A: 1-Click VPS Deployment
 
-This is the easiest deployment path. You do not need to configure any root directories, individual platform build paths, or port bindings manually.
+This is the easiest path for hosting on your own Linux server. You do not need to configure any root directories, individual platform build paths, or port bindings manually.
 
 ### 1. Configure GoDaddy DNS
 Point all subdomains and your main domain to your VPS IP address:
@@ -30,9 +31,30 @@ sudo bash setup_vps.sh
 
 ---
 
-## OPTION B: Vercel & Render (Multi-Service)
+## OPTION B: 1-Click Render Blueprint Deployment
 
-If you prefer using distributed serverless/container hosts, follow the steps below:
+This is the easiest path for hosting in the cloud. Instead of setting up environment variables and root folders for 7 individual dashboards, Render reads the `render.yaml` configuration file and builds everything automatically.
+
+### 1. Link Your Git Repo
+1. Log in to [Render](https://render.com).
+2. Click **New** → **Blueprint**.
+3. Select your repository `JawadSk12/CAPVIA` (or click **Connect** if not linked).
+
+### 2. Input Environment Variables (Only Once!)
+Render will show a single page listing all required environment variables:
+* Paste your API keys (Postgres, Upstash Redis, MongoDB, Supabase, Resend, and OpenAI) into their respective fields.
+* Click **Apply**.
+
+Render will automatically create all 7 services (all preset to the **Free** tier), link them to the shared credentials, build the code, and launch them.
+
+### 3. Map GoDaddy Domains
+Once Render finishes building, go to the settings page of each of the created web services, and configure GoDaddy CNAME records to point to each corresponding Render URL (see Option C for the DNS mapping table).
+
+---
+
+## OPTION C: Manual Vercel & Render Setup
+
+If you prefer manually setting up individual serverless/container hosts, follow the steps below:
 
 ### Step 1: Provision Cloud Databases & Storage
 
