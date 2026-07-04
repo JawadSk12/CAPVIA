@@ -62,6 +62,10 @@ Follow this step-by-step guide to provision database services, set up hosting in
 
 ## Step 3: Deploy Backend Services (Render / Koyeb — Free Alternatives)
 
+> [!IMPORTANT]
+> **Python Version Requirement**: Render by default may use newer Python versions (like 3.14) which fail to compile binary wheels for dependencies (like `pydantic-core`, `cryptography`). A `.python-version` file has been added to the root of the repository to force Render to build using **Python 3.12.3**. 
+> For safety, always add the environment variable **`PYTHON_VERSION`** = **`3.12.3`** in the Environment variables list for each service.
+
 Log in to [Render](https://render.com/) or [Koyeb](https://www.koyeb.com/) using your GitHub account. Link your repository `JawadSk12/CAPVIA` and create 4 free Web Services.
 
 ### 1. CAPVIA Gateway (api.capvia.in)
@@ -91,8 +95,8 @@ Log in to [Render](https://render.com/) or [Koyeb](https://www.koyeb.com/) using
   - `DATABASE_URL` (Neon Postgres pooled URL)
   - `MONGO_URL` & `MONGO_DB_NAME` (MongoDB connection details)
   - `REDIS_URL` (Upstash Redis)
-  - `CELERY_BROKER_URL` = `rediss://default:TOKEN@HOST:6379/1` (Index 1)
-  - `CELERY_RESULT_BACKEND` = `rediss://default:TOKEN@HOST:6379/2` (Index 2)
+  - `CELERY_BROKER_URL` = `rediss://default:gQAAAAAAAfuAAAIgcDE5ODhmMDIzZGE2MTY0ZjgzYTA1N2NiNTYxOWI5MThkNg@HOST:6379/1` (Index 1)
+  - `CELERY_RESULT_BACKEND` = `rediss://default:gQAAAAAAAfuAAAIgcDE5ODhmMDIzZGE2MTY0ZjgzYTA1N2NiNTYxOWI5MThkNg@HOST:6379/2` (Index 2)
   - `SECRET_KEY` (Secure random key)
   - `ENVIRONMENT` = `production`
 
