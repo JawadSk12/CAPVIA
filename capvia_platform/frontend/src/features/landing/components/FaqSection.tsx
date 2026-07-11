@@ -1,109 +1,110 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, HelpCircle } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
-export default function FaqSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+const FAQS = [
+  {
+    q: "How does CAPVIA's AI interview differ from a human interview?",
+    a: "CAPVIA's AI interview is fully proctored, consistent, and objective. It adapts questions based on the candidate's prior answers, scores communication clarity and technical depth in real time, and eliminates interviewer bias. Results are transcribed and scored immediately — no waiting, no subjectivity.",
+  },
+  {
+    q: "Is the coding simulation proctored?",
+    a: "Yes. Every simulation session is monitored via webcam for gaze direction, tab-switch detection, phone detection, and copy-paste event tracking. All events are logged to the candidate's integrity trust index.",
+  },
+  {
+    q: "What is a CAPVIA DNA Profile?",
+    a: "The DNA Profile is a composited, weighted competence index derived from all four assessment stages — ATS score, code simulation score, AI interview rating, and behavioral integrity index. It's displayed as a radar chart across capability dimensions.",
+  },
+  {
+    q: "Can HR teams customize the scoring weights?",
+    a: "Yes. HR administrators can adjust the weighting of each component (ATS, Simulation, Interview, Integrity) to match role-specific requirements from the settings panel.",
+  },
+  {
+    q: "Is CAPVIA suitable for non-technical roles?",
+    a: "Absolutely. The ATS and AI interview engines work across any domain. The coding simulation stage is optional and can be disabled for non-engineering pipelines.",
+  },
+  {
+    q: "How does CAPVIA prevent cheating?",
+    a: "Multiple layers: live proctoring via webcam (gaze, phone, face detection), tab-switch monitoring, clipboard event detection, timed challenges, and AI-powered anomaly detection on submitted code. All events are recorded and included in the final integrity report.",
+  },
+];
 
-  const faqs = [
-    {
-      q: "What makes CAPVIA different from a standard ATS?",
-      a: "Standard ATS systems match literal keywords in resumes, introducing high false negatives and bias. CAPVIA uses Sentence-BERT semantic models to assess conceptual relevance, then runs candidates through proctored coding and adaptive video interviews to score actual capability."
-    },
-    {
-      q: "How does browser proctoring detect cheating without native plugins?",
-      a: "CAPVIA leverages standard browser HTML5 APIs via a custom React security hook: the Page Visibility API flags tab switches; window blur checks track focus loss; the Fullscreen API enforces kiosk lockouts; and the Window Management API checks for secondary displays."
-    },
-    {
-      q: "Can we calibrate assessment weights for different role requirements?",
-      a: "Yes. Recruiter teams can adjust evaluation weights (e.g. ATS overall score, simulation correctness, verbal Q&A accuracy, and proctoring trust limits) directly via our backend gateway configuration, which updates calibration weights cached in Redis."
-    },
-    {
-      q: "Is the DNA profiling model objective and bias-free?",
-      a: "Yes. The 9-dimension DNA Engine compiles raw performance metrics (test success rate, speech analysis, execution speed) without accessing candidate demographic metadata, names, or location fields, ensuring compliance and fairness."
-    },
-    {
-      q: "How do webhooks sync candidate assessment states?",
-      a: "CAPVIA implements dynamic webhook subscription callbacks. When a candidate uploads a resume, completes a simulation, or finishes an interview, subsystems dispatch signed HMAC-SHA256 webhooks to synchronize status changes automatically."
-    }
-  ];
-
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <section className="relative py-24 bg-[#030914] overflow-hidden text-slate-100 z-10 border-t border-slate-900">
-      
-      {/* SVG Thread trace running vertically - dark theme style */}
-      <div className="absolute inset-x-0 top-0 bottom-0 pointer-events-none z-0">
-        <svg className="w-full h-full" viewBox="0 0 1200 600" preserveAspectRatio="none" overflow="visible">
-          <line x1="600" y1="0" x2="600" y2="600" stroke="#162A45" strokeWidth="2.5" />
-          <line x1="600" y1="0" x2="600" y2="600" stroke="#42A5F5" strokeWidth="2.5" strokeDasharray="30 220" className="animate-faq-thread" />
-        </svg>
-      </div>
-
-      <div className="relative max-w-4xl mx-auto px-6 z-10">
-        <div className="text-center mb-16 space-y-4">
-          <h2 className="text-4xl md:text-5xl font-black text-white font-outfit tracking-tighter leading-none">
-            Frequently Asked Questions
-          </h2>
-          <p className="text-base text-slate-400 leading-relaxed font-medium">
-            Have questions about proctoring, calibrations, or data security? We have answers.
+    <div
+      className="rounded-2xl overflow-hidden transition-all"
+      style={{
+        border: open ? "1px solid rgba(66,165,245,0.2)" : "1px solid rgba(255,255,255,0.06)",
+        background: open ? "rgba(66,165,245,0.04)" : "rgba(255,255,255,0.02)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
+      >
+        <span
+          className="text-[14px] font-semibold"
+          style={{ color: open ? "white" : "rgba(226,232,240,0.85)" }}
+        >
+          {q}
+        </span>
+        <ChevronDown
+          className="shrink-0 w-4.5 h-4.5 transition-transform duration-200"
+          style={{
+            color: open ? "#42A5F5" : "rgba(100,116,139,0.6)",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        />
+      </button>
+      {open && (
+        <div
+          className="px-6 pb-5"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+        >
+          <p
+            className="text-[13px] leading-relaxed pt-4"
+            style={{ color: "rgba(148,163,184,0.75)" }}
+          >
+            {a}
           </p>
         </div>
+      )}
+    </div>
+  );
+}
 
-        <div className="space-y-4">
-          {faqs.map((faq, idx) => {
-            const isOpen = openIndex === idx;
-            return (
-              <div
-                key={idx}
-                className={`border overflow-hidden transition-all duration-300 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-lg rounded-br-lg ${
-                  isOpen 
-                    ? "bg-slate-900/60 border-[#42A5F5]/30 shadow-[0_0_20px_rgba(66,165,245,0.05)]" 
-                    : "bg-slate-950/40 border-slate-900 hover:border-slate-800"
-                }`}
-              >
-                <button
-                  onClick={() => setOpenIndex(isOpen ? null : idx)}
-                  className="w-full p-6 text-left flex items-center justify-between space-x-4 hover:bg-slate-900/40 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <HelpCircle className="w-5 h-5 text-[#42A5F5] flex-shrink-0" />
-                    <span className="text-base font-bold text-slate-200 leading-snug font-outfit">
-                      {faq.q}
-                    </span>
-                  </div>
-                  <ChevronDown
-                    className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${
-                      isOpen ? "transform rotate-180 text-[#FFC107]" : ""
-                    }`}
-                  />
-                </button>
+export default function FaqSection() {
+  return (
+    <section
+      id="faq"
+      className="py-24 md:py-32"
+      style={{ background: "#030914" }}
+    >
+      <div className="max-w-3xl mx-auto px-6">
+        <div className="text-center mb-14">
+          <p
+            className="text-[10px] font-black uppercase tracking-widest mb-4"
+            style={{ color: "#42A5F5" }}
+          >
+            Frequently Asked
+          </p>
+          <h2
+            className="font-outfit font-black text-white tracking-tighter"
+            style={{ fontSize: "clamp(1.8rem, 3.5vw, 2.8rem)", lineHeight: 1.05 }}
+          >
+            Everything You Need to Know
+          </h2>
+        </div>
 
-                {/* Accordion Expandable Content */}
-                <div
-                  className={`transition-all duration-300 overflow-hidden ${
-                    isOpen ? "max-h-[250px] border-t border-slate-900/80" : "max-h-0"
-                  }`}
-                >
-                  <div className="p-6 text-sm text-slate-400 leading-relaxed font-medium">
-                    {faq.a}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="space-y-3">
+          {FAQS.map((faq, i) => (
+            <FaqItem key={i} {...faq} />
+          ))}
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes faq-thread-movement {
-          0% { stroke-dashoffset: 250; }
-          100% { stroke-dashoffset: 0; }
-        }
-        .animate-faq-thread {
-          animation: faq-thread-movement 8s linear infinite;
-        }
-      `}</style>
     </section>
   );
 }

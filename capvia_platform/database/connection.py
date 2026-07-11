@@ -4,7 +4,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 # Neon database URL from user request
-DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_tLEN1ylR7PGq@ep-bitter-sea-ao65dvct-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?ssl=require"
+DEFAULT_DATABASE_URL = "postgresql://postgres:Almas%406060@localhost:5432/capvia"
 
 # Load database URL from environment or fallback to default
 database_url = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)

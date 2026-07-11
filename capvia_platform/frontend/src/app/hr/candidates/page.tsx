@@ -214,101 +214,167 @@ export default function HRCandidatesPage() {
       <UnifiedLayout title="Candidates Pipeline" breadcrumbs={[{ label: 'Workspace' }, { label: 'Candidates' }]}>
         
         {/* Upper Action Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        {/* ── Action Bar ─────────────────────────────────── */}
+        <div
+          className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 p-5 rounded-2xl"
+          style={{ background: '#FFFFFF', border: '1px solid var(--border-hairline)', boxShadow: 'var(--shadow-2)' }}
+        >
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 font-outfit">Hiring Pipelines</h2>
-            <p className="text-slate-500 text-xs mt-1">Drag and drop candidates across stages to transition status</p>
+            <h1 className="text-[17px] font-black text-slate-900 font-outfit tracking-tight">Hiring Pipeline</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Drag candidates across stages to transition their status</p>
           </div>
-          <div className="flex items-center space-x-3 w-full md:w-auto z-10">
-            <span className="text-xs text-slate-500 font-medium">Filter Vacancy:</span>
+          <div className="flex items-center gap-3 w-full md:w-auto">
             {loadingInternships ? (
-              <span className="text-xs text-slate-400">Loading...</span>
+              <div className="h-9 w-36 skeleton rounded-xl" />
             ) : (
               <select
                 value={selectedInternshipId}
                 onChange={(e) => setSelectedInternshipId(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#0D47A1] cursor-pointer"
+                className="h-9 pl-3 pr-8 text-[12px] font-semibold text-slate-700 rounded-xl cursor-pointer focus:outline-none"
+                style={{ background: '#FFFFFF', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-1)' }}
               >
                 <option value="">All Vacancies</option>
                 {internships.map((int) => (
-                  <option key={int.id} value={int.id}>
-                    {int.title}
-                  </option>
+                  <option key={int.id} value={int.id}>{int.title}</option>
                 ))}
               </select>
             )}
-            
-            <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 w-60">
-              <Search className="h-4 w-4 text-slate-400" />
+            <div
+              className="flex items-center gap-2 h-9 px-3 w-60 rounded-xl"
+              style={{ background: '#FFFFFF', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-1)' }}
+            >
+              <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
               <input
                 type="text"
-                placeholder="Search candidates..."
+                placeholder="Search candidates…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none text-xs text-slate-800 focus:outline-none w-full placeholder:text-slate-400"
+                className="bg-transparent border-none text-[12px] text-slate-800 focus:outline-none w-full placeholder:text-slate-400"
               />
             </div>
           </div>
         </div>
 
-        {/* Kanban Board Container */}
+        {/* ── Kanban Board ───────────────────────────────── */}
         {loadingApplications ? (
-          <div className="py-24 text-center text-slate-500 text-sm">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0D47A1]" />
-            Loading applicant pipelines...
+          <div className="py-24 flex flex-col items-center gap-3">
+            <RefreshCw className="h-7 w-7 animate-spin" style={{ color: '#0D47A1' }} />
+            <p className="text-[12px] text-slate-400 font-medium">Loading pipeline…</p>
           </div>
         ) : (
-          <div className="flex space-x-4 overflow-x-auto pb-6 select-none no-scrollbar items-start min-h-[600px]">
+          <div className="flex gap-3.5 overflow-x-auto pb-6 select-none no-scrollbar items-start min-h-[600px]">
             {KANBAN_STAGES.map((stage) => {
               const cards = kanbanGroups[stage.id] || [];
+              const STAGE_ACCENTS: Record<string, { dot: string; headerBg: string; colBg: string; border: string }> = {
+                applied:   { dot: '#42A5F5', headerBg: 'rgba(66,165,245,0.06)',   colBg: '#F8FAFC', border: 'rgba(66,165,245,0.1)' },
+                ats:       { dot: '#7C3AED', headerBg: 'rgba(124,58,237,0.06)',  colBg: '#FAF9FF', border: 'rgba(124,58,237,0.1)' },
+                simulation:{ dot: '#F59E0B', headerBg: 'rgba(245,158,11,0.06)', colBg: '#FFFDF5', border: 'rgba(245,158,11,0.12)' },
+                interview: { dot: '#EC4899', headerBg: 'rgba(236,72,153,0.06)',  colBg: '#FFF9FC', border: 'rgba(236,72,153,0.1)' },
+                completed: { dot: '#10B981', headerBg: 'rgba(16,185,129,0.06)',  colBg: '#F5FFFA', border: 'rgba(16,185,129,0.1)' },
+                selected:  { dot: '#0D47A1', headerBg: 'rgba(13,71,161,0.07)',   colBg: '#F6F9FE', border: 'rgba(13,71,161,0.12)' },
+                rejected:  { dot: '#94A3B8', headerBg: 'rgba(148,163,184,0.06)', colBg: '#F9FAFB', border: 'rgba(148,163,184,0.1)' },
+              };
+              const accent = STAGE_ACCENTS[stage.id] || STAGE_ACCENTS.applied;
               return (
                 <div
                   key={stage.id}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, stage.id)}
-                  className={`w-72 shrink-0 border border-slate-100 rounded-2xl p-4 shadow-sm flex flex-col min-h-[450px] transition-colors ${stage.color}`}
+                  className="w-[260px] shrink-0 flex flex-col min-h-[500px] rounded-2xl overflow-hidden"
+                  style={{ background: accent.colBg, border: `1px solid ${accent.border}`, boxShadow: 'var(--shadow-1)' }}
                 >
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200/50">
-                    <span className="text-xs font-bold text-slate-800 font-outfit">{stage.label}</span>
-                    <span className="text-[10px] bg-white border border-slate-100 px-2 py-0.5 rounded-full font-bold text-slate-500">
+                  {/* Column header */}
+                  <div
+                    className="flex items-center justify-between px-4 py-3 shrink-0"
+                    style={{ background: accent.headerBg, borderBottom: `1px solid ${accent.border}` }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full" style={{ background: accent.dot }} />
+                      <span className="text-[11px] font-bold text-slate-800 font-outfit">{stage.label}</span>
+                    </div>
+                    <span
+                      className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                      style={{ background: '#FFFFFF', color: '#64748B', border: '1px solid rgba(15,23,42,0.06)' }}
+                    >
                       {cards.length}
                     </span>
                   </div>
 
-                  {/* Cards Scroll Container */}
-                  <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar">
-                    {cards.map((app) => (
-                      <div
-                        key={app.id}
-                        draggable="true"
-                        onDragStart={(e) => handleDragStart(e, app.id)}
-                        onClick={() => { setSelectedAppId(app.id); setDrawerTab('overview'); }}
-                        className="bg-white border border-slate-150/70 hover:border-[#0D47A1]/40 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing text-left"
-                      >
-                        <h5 className="font-bold text-slate-800 text-xs truncate">{app.candidate?.full_name}</h5>
-                        <p className="text-[9px] text-slate-400 mt-1 truncate">{app.candidate?.email}</p>
-                        
-                        {/* Summary Badges */}
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50 text-[10px] text-slate-500 font-semibold">
-                          <span className="bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">
-                            {app.vacancy?.title ? app.vacancy.title.slice(0, 18) : 'Vacancy'}
-                          </span>
-                          {app.application_mapping?.combined_risk_level === 'HIGH' && (
-                            <span className="bg-rose-50 text-rose-600 border border-rose-100 px-1.5 py-0.5 rounded text-[8px] font-black animate-pulse">
-                              RISK
+                  {/* Cards */}
+                  <div className="p-3 space-y-2.5 flex-1 overflow-y-auto no-scrollbar">
+                    {cards.map((app) => {
+                      const initials = (app.candidate?.full_name || app.candidate?.email || 'U')
+                        .split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+                      return (
+                        <div
+                          key={app.id}
+                          draggable="true"
+                          onDragStart={(e) => handleDragStart(e, app.id)}
+                          onClick={() => { setSelectedAppId(app.id); setDrawerTab('overview'); }}
+                          className="rounded-xl p-3.5 cursor-grab active:cursor-grabbing text-left transition-all hover:-translate-y-px"
+                          style={{
+                            background: '#FFFFFF',
+                            border: '1px solid var(--border-hairline)',
+                            boxShadow: 'var(--shadow-1)',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.borderColor = accent.dot + '40';
+                            (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-2)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hairline)';
+                            (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-1)';
+                          }}
+                        >
+                          <div className="flex items-center gap-2.5 mb-2.5">
+                            {/* Avatar */}
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0"
+                              style={{ background: 'linear-gradient(135deg, #0D47A1, #1976D2)' }}
+                            >
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <h5 className="text-[12px] font-bold text-slate-900 truncate leading-tight">{app.candidate?.full_name}</h5>
+                              <p className="text-[9px] text-slate-400 mt-0.5 truncate">{app.candidate?.email}</p>
+                            </div>
+                          </div>
+
+                          {/* Footer row */}
+                          <div
+                            className="flex items-center justify-between pt-2.5 mt-1"
+                            style={{ borderTop: '1px solid var(--border-hairline)' }}
+                          >
+                            <span
+                              className="text-[9px] font-semibold px-2 py-0.5 rounded-full truncate max-w-[120px]"
+                              style={{ background: 'var(--surface-subtle)', color: '#64748B', border: '1px solid var(--border-hairline)' }}
+                            >
+                              {app.vacancy?.title ? app.vacancy.title.slice(0, 20) : 'Vacancy'}
                             </span>
-                          )}
+                            {app.application_mapping?.combined_risk_level === 'HIGH' && (
+                              <span
+                                className="text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide"
+                                style={{ background: 'rgba(239,68,68,0.08)', color: '#DC2626', border: '1px solid rgba(239,68,68,0.2)', animation: 'glow-pulse 2s ease-in-out infinite' }}
+                              >
+                                RISK
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {cards.length === 0 && (
-                      <div className="text-center py-12 text-[10px] text-slate-400 italic">
-                        Drag candidates here
+                      <div className="flex flex-col items-center justify-center h-32 text-center">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center mb-2"
+                          style={{ background: accent.headerBg }}
+                        >
+                          <Users className="w-3.5 h-3.5" style={{ color: accent.dot }} />
+                        </div>
+                        <p className="text-[9px] font-medium text-slate-400">Drag candidates here</p>
                       </div>
                     )}
                   </div>
-
                 </div>
               );
             })}

@@ -1,5 +1,6 @@
 'use client';
-import React from 'react';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -7,7 +8,7 @@ import {
   PieChart, User, Bell, Settings, HelpCircle, LogOut, X, BrainCircuit,
   Building, Users, Trophy, BarChart, CreditCard, UserCheck,
   Bookmark, Cpu, ScrollText, HeartPulse, BarChart2,
-  GraduationCap, Target, ChevronRight,
+  GraduationCap, Target, ChevronRight, ChevronLeft, Menu,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 
@@ -19,15 +20,15 @@ interface SidebarProps { isOpen: boolean; onClose: () => void; }
 interface NavLink { href: string; label: string; icon: React.ElementType; badge?: string }
 interface NavGroup { label: string; links: NavLink[] }
 
-// ── Candidate navigation ────────────────────────────────────────
+/* ── Navigation Definitions ─────────────────────────────────── */
 const candidateGroups: NavGroup[] = [
   {
     label: 'My Career',
     links: [
-      { href: '/dashboard',            label: 'Dashboard',      icon: LayoutDashboard },
-      { href: '/internships',          label: 'Browse Jobs',    icon: Briefcase },
-      { href: '/internships/saved',    label: 'Saved Jobs',     icon: Bookmark },
-      { href: '/applications',         label: 'My Applications',icon: Inbox },
+      { href: '/dashboard',         label: 'Dashboard',     icon: LayoutDashboard },
+      { href: '/internships',       label: 'Browse Jobs',   icon: Briefcase },
+      { href: '/internships/saved', label: 'Saved Jobs',    icon: Bookmark },
+      { href: '/applications',      label: 'Applications',  icon: Inbox },
     ],
   },
   {
@@ -51,25 +52,24 @@ const candidateGroups: NavGroup[] = [
   },
 ];
 
-// ── HR navigation ───────────────────────────────────────────────
 const hrGroups: NavGroup[] = [
   {
     label: 'Hiring Workspace',
     links: [
-      { href: '/hr/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
-      { href: '/hr/company',      label: 'My Company',   icon: Building },
-      { href: '/hr/internships',  label: 'Job Posts',    icon: Briefcase },
-      { href: '/hr/candidates',   label: 'Candidates',   icon: Users },
-      { href: '/hr/applications', label: 'Pipeline',     icon: Inbox },
+      { href: '/hr/dashboard',    label: 'Dashboard',  icon: LayoutDashboard },
+      { href: '/hr/company',      label: 'My Company', icon: Building },
+      { href: '/hr/internships',  label: 'Job Posts',  icon: Briefcase },
+      { href: '/hr/candidates',   label: 'Candidates', icon: Users },
+      { href: '/hr/applications', label: 'Pipeline',   icon: Inbox },
     ],
   },
   {
     label: 'AI Intelligence',
     links: [
-      { href: '/hr/rankings',   label: 'Leaderboard', icon: Trophy },
-      { href: '/hr/dna',        label: 'DNA Profiles', icon: Dna },
-      { href: '/hr/reports',    label: 'Reports',      icon: FileText },
-      { href: '/hr/analytics',  label: 'Analytics',    icon: BarChart },
+      { href: '/hr/rankings',  label: 'Leaderboard', icon: Trophy },
+      { href: '/hr/dna',       label: 'DNA Profiles', icon: Dna },
+      { href: '/hr/reports',   label: 'Reports',      icon: FileText },
+      { href: '/hr/analytics', label: 'Analytics',    icon: BarChart },
     ],
   },
   {
@@ -84,14 +84,13 @@ const hrGroups: NavGroup[] = [
   },
 ];
 
-// ── Admin navigation ────────────────────────────────────────────
 const adminGroups: NavGroup[] = [
   {
     label: 'Platform Overview',
     links: [
-      { href: '/admin/dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
-      { href: '/admin/analytics',  label: 'Analytics',       icon: BarChart2 },
-      { href: '/admin/health',     label: 'Platform Health', icon: HeartPulse },
+      { href: '/admin/dashboard', label: 'Dashboard',       icon: LayoutDashboard },
+      { href: '/admin/analytics', label: 'Analytics',       icon: BarChart2 },
+      { href: '/admin/health',    label: 'Platform Health', icon: HeartPulse },
     ],
   },
   {
@@ -120,198 +119,320 @@ const adminGroups: NavGroup[] = [
   },
 ];
 
-// ── Sidebar brand config per role ───────────────────────────────
-const roleBrand: Record<string, {
-  headerBg: string;
-  headerText: string;
-  brand: string;
-  tagline: string;
-  activeBg: string;
-  activeText: string;
-  activeIconColor: string;
-  badgeCls: string;
-  badgeLabel: string;
-}> = {
+const ROLE_META: Record<string, { tagline: string; badge: string; badgeCls: string; accent: string }> = {
   hr: {
-    headerBg: 'bg-[#1E3A6E]',
-    headerText: 'text-white',
-    brand: 'CAPVIA',
     tagline: 'Hiring OS',
-    activeBg: 'bg-[#42A5F5]/10',
-    activeText: 'text-white',
-    activeIconColor: 'text-[#42A5F5]',
-    badgeCls: 'bg-[#FFC107] text-[#0D47A1]',
-    badgeLabel: 'HR',
+    badge: 'HR',
+    badgeCls: 'bg-[#FFC107]/15 text-[#FFC107] border-[#FFC107]/25',
+    accent: '#42A5F5',
   },
   admin: {
-    headerBg: 'bg-[#1E3A6E]',
-    headerText: 'text-white',
-    brand: 'CAPVIA',
     tagline: 'Admin Panel',
-    activeBg: 'bg-[#42A5F5]/10',
-    activeText: 'text-white',
-    activeIconColor: 'text-[#42A5F5]',
-    badgeCls: 'bg-violet-500 text-white',
-    badgeLabel: 'ADMIN',
+    badge: 'ADMIN',
+    badgeCls: 'bg-violet-500/15 text-violet-300 border-violet-500/25',
+    accent: '#A78BFA',
   },
   candidate: {
-    headerBg: 'bg-[#1E3A6E]',
-    headerText: 'text-white',
-    brand: 'CAPVIA',
     tagline: 'Career Portal',
-    activeBg: 'bg-[#42A5F5]/10',
-    activeText: 'text-white',
-    activeIconColor: 'text-[#42A5F5]',
-    badgeCls: 'bg-[#42A5F5]/25 text-[#42A5F5]',
-    badgeLabel: 'CANDIDATE',
+    badge: 'CANDIDATE',
+    badgeCls: 'bg-[#42A5F5]/15 text-[#42A5F5] border-[#42A5F5]/25',
+    accent: '#42A5F5',
   },
 };
 
-// ── Component ───────────────────────────────────────────────────
+/* ── Sidebar Component ──────────────────────────────────────── */
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
-  const role = user?.role || 'candidate';
+  const [collapsed, setCollapsed] = useState(false);
 
+  const role = user?.role || 'candidate';
   const groups =
     role === 'admin' ? adminGroups :
     role === 'hr'    ? hrGroups    :
                        candidateGroups;
 
-  const brand = roleBrand[role] || roleBrand.candidate;
-  const isHrOrAdmin = role === 'hr' || role === 'admin';
-  const sidebarBg = 'bg-[#1E3A6E]';
-  const borderCls = 'border-white/10';
-  const groupLabelCls = 'text-[10px] uppercase tracking-widest text-white/30 font-bold';
-  const linkBase = 'text-white/70 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-200';
-  const activeLinkCls = 'bg-[#42A5F5]/10 text-white border-l-4 border-l-[#42A5F5] rounded-r-xl rounded-l-none';
-  const activeIconCls = 'text-[#42A5F5]';
-  const inactiveIconCls = 'text-white/40';
-  const logoutCls = 'text-white/60 hover:text-white hover:bg-red-500/25 transition-colors';
+  const meta = ROLE_META[role] || ROLE_META.candidate;
+  const initials = (user?.full_name || user?.email || 'U')
+    .split(' ')
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  const sidebarWidth = collapsed ? 'w-[64px]' : 'w-[240px]';
 
   return (
     <>
+      {/* Mobile backdrop */}
       {isOpen && (
-        <div onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm lg:hidden" />
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-cosmos-900/60 backdrop-blur-sm lg:hidden"
+          aria-hidden="true"
+        />
       )}
 
-      <aside className={cn(
-        'fixed inset-y-0 left-0 w-64 flex flex-col z-50 border-r transition-transform duration-300',
-        sidebarBg, borderCls,
-        'lg:translate-x-0 lg:static lg:h-screen',
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      )}>
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex flex-col',
+          'border-r transition-all duration-220 ease-smooth will-change-transform',
+          'lg:translate-x-0 lg:static lg:h-screen',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          sidebarWidth,
+        )}
+        style={{
+          background: 'var(--sidebar-bg)',
+          borderColor: 'var(--sidebar-border)',
+          transition: 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        aria-label="Primary navigation"
+      >
+        {/* ── Header ────────────────────────────────────────── */}
+        <div
+          className="shrink-0 px-3 py-4"
+          style={{ borderBottom: '1px solid var(--sidebar-border)' }}
+        >
+          {/* Logo row */}
+          <div className={cn(
+            'flex items-center',
+            collapsed ? 'justify-center' : 'justify-between',
+            'mb-3',
+          )}>
+            <Link
+              href="/"
+              className={cn(
+                'flex items-center gap-2.5 group',
+                collapsed && 'justify-center',
+              )}
+            >
+              {/* Logo mark */}
+              <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 group-hover:bg-white/15 transition-colors">
+                <BrainCircuit className="w-4.5 h-4.5 text-white" />
+              </div>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <span className="text-[15px] font-black tracking-tight font-outfit text-white block leading-none">
+                    CAPVIA
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/35 leading-none mt-0.5 block">
+                    {meta.tagline}
+                  </span>
+                </div>
+              )}
+            </Link>
 
-        {/* ── Header ─────────────────────────────────────────── */}
-        <div className={cn('h-auto px-4 pt-5 pb-4 border-b shrink-0', borderCls)}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-white p-1 flex items-center justify-center shadow-md border border-slate-100">
-                <BrainCircuit className="w-6 h-6 text-[#0D47A1]" />
-              </div>
-              <div>
-                <span className="text-lg font-black tracking-tight font-outfit text-white">
-                  {brand.brand}
-                </span>
-              </div>
-            </div>
-            <button onClick={onClose}
-              className="lg:hidden p-1 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors">
-              <X className="h-4 w-4" />
+            {/* Desktop collapse toggle */}
+            {!collapsed && (
+              <button
+                onClick={() => setCollapsed(true)}
+                className="hidden lg:flex p-1 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+                aria-label="Collapse sidebar"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Mobile close */}
+            <button
+              onClick={onClose}
+              className={cn(
+                'lg:hidden p-1 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors',
+                collapsed && 'hidden',
+              )}
+              aria-label="Close sidebar"
+            >
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Tagline + role badge */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              {isHrOrAdmin
-                ? <Target className="w-3 h-3 text-[#FFC107]" />
-                : <GraduationCap className="w-3 h-3 text-[#42A5F5]" />
-              }
-              <span className="text-[10px] font-bold text-white/60">
-                {brand.tagline}
-              </span>
-            </div>
-            <span className={cn('text-[9px] font-black px-2 py-0.5 rounded-full', brand.badgeCls)}>
-              {brand.badgeLabel}
-            </span>
-          </div>
+          {/* Collapsed expand button */}
+          {collapsed && (
+            <button
+              onClick={() => setCollapsed(false)}
+              className="hidden lg:flex w-full items-center justify-center p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors mt-1"
+              aria-label="Expand sidebar"
+            >
+              <Menu className="w-3.5 h-3.5" />
+            </button>
+          )}
 
-          {/* User quick preview with Dark Glass surface */}
-          {user && (
-            <div className="flex items-center gap-2.5 mt-4 px-3 py-2.5 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-lg">
-              <div className="w-8 h-8 rounded-full bg-[#42A5F5] text-white flex items-center justify-center text-xs font-black flex-shrink-0">
-                {(user.full_name || user.email || 'U')[0].toUpperCase()}
+          {/* User card */}
+          {!collapsed && user && (
+            <div
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl mt-1"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              {/* Avatar */}
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0"
+                style={{ background: 'linear-gradient(135deg, #0D47A1, #42A5F5)' }}
+              >
+                {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-bold truncate text-white">
+                <p className="text-[11px] font-bold text-white truncate leading-tight">
                   {user.full_name || user.email}
-                </div>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#42A5F5]/25 text-[#42A5F5] mt-0.5 inline-block">
-                  {role.toUpperCase()}
+                </p>
+                <span
+                  className={cn(
+                    'inline-block text-[8px] font-black px-1.5 py-0.5 rounded-full border leading-none mt-0.5',
+                    meta.badgeCls,
+                  )}
+                  style={{ letterSpacing: '0.06em' }}
+                >
+                  {meta.badge}
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* Collapsed avatar */}
+          {collapsed && user && (
+            <div className="flex justify-center mt-2">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black"
+                style={{ background: 'linear-gradient(135deg, #0D47A1, #42A5F5)' }}
+                title={user.full_name || user.email}
+              >
+                {initials}
               </div>
             </div>
           )}
         </div>
 
-        {/* ── Nav ────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5 scrollbar-thin">
+        {/* ── Navigation ────────────────────────────────────── */}
+        <nav
+          className="flex-1 overflow-y-auto py-3 px-2 space-y-5 scrollbar-thin"
+          aria-label="Sidebar navigation"
+        >
           {groups.map((group) => (
             <div key={group.label}>
-              <p className={cn('px-3 mb-2', groupLabelCls)}>
-                {group.label}
-              </p>
-              <nav className="space-y-1">
+              {/* Group label */}
+              {!collapsed && (
+                <p
+                  className="px-3 mb-1.5 text-[9px] font-bold uppercase tracking-widest"
+                  style={{ color: 'var(--sidebar-text-muted)', letterSpacing: '0.12em' }}
+                >
+                  {group.label}
+                </p>
+              )}
+
+              <div className="space-y-0.5">
                 {group.links.map((link) => {
                   const Icon = link.icon;
                   const active = pathname === link.href || pathname?.startsWith(link.href + '/');
+
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
                       onClick={onClose}
+                      title={collapsed ? link.label : undefined}
                       className={cn(
-                        'flex items-center justify-between px-3 py-2.5 text-[13px] font-semibold transition-all duration-150',
-                        active ? activeLinkCls : linkBase
+                        'flex items-center rounded-xl transition-all duration-100 relative group',
+                        collapsed ? 'justify-center h-10 w-10 mx-auto' : 'gap-2.5 h-9 px-2.5',
+                        active
+                          ? 'text-white'
+                          : 'hover:text-white',
                       )}
+                      style={
+                        active
+                          ? { background: 'var(--sidebar-active-bg)', color: 'white' }
+                          : { color: 'var(--sidebar-text)' }
+                      }
+                      onMouseEnter={(e) => {
+                        if (!active) {
+                          (e.currentTarget as HTMLElement).style.background = 'var(--sidebar-hover-bg)';
+                          (e.currentTarget as HTMLElement).style.color = 'white';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active) {
+                          (e.currentTarget as HTMLElement).style.background = '';
+                          (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-text)';
+                        }
+                      }}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className={cn('h-4 w-4 flex-shrink-0', active ? activeIconCls : inactiveIconCls)} />
-                        <span>{link.label}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {link.badge && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">
-                            {link.badge}
-                          </span>
-                        )}
-                        {active && <ChevronRight className={cn('w-3 h-3', activeIconCls)} />}
-                      </div>
+                      {/* Active indicator bar */}
+                      {active && !collapsed && (
+                        <span
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-r-full"
+                          style={{ background: 'var(--sidebar-active-bar)' }}
+                        />
+                      )}
+
+                      <Icon
+                        className="w-4 h-4 shrink-0 transition-colors"
+                        style={{ color: active ? '#42A5F5' : undefined }}
+                      />
+
+                      {!collapsed && (
+                        <span className="text-[13px] font-medium truncate flex-1 leading-none">
+                          {link.label}
+                        </span>
+                      )}
+
+                      {!collapsed && link.badge && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-danger-500 text-white">
+                          {link.badge}
+                        </span>
+                      )}
+
+                      {!collapsed && active && (
+                        <ChevronRight
+                          className="w-3 h-3 shrink-0 opacity-50"
+                          style={{ color: '#42A5F5' }}
+                        />
+                      )}
+
+                      {/* Tooltip for collapsed */}
+                      {collapsed && (
+                        <span className="absolute left-full ml-3 px-2.5 py-1 bg-cosmos-800 text-white text-xs font-semibold rounded-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-4"
+                          style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                        >
+                          {link.label}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
-              </nav>
+              </div>
             </div>
           ))}
-        </div>
+        </nav>
 
-        {/* ── Footer ─────────────────────────────────────────── */}
-        <div className={cn('p-3 border-t shrink-0', borderCls)}>
+        {/* ── Footer — Logout ────────────────────────────────── */}
+        <div
+          className="shrink-0 p-2"
+          style={{ borderTop: '1px solid var(--sidebar-border)' }}
+        >
           <button
             onClick={() => { logout(); window.location.href = '/auth/login'; }}
             className={cn(
-              'flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-semibold rounded-xl',
-              logoutCls
+              'flex items-center rounded-xl transition-all duration-100',
+              collapsed ? 'justify-center h-10 w-10 mx-auto' : 'gap-2.5 h-9 px-2.5 w-full',
             )}
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.12)';
+              (e.currentTarget as HTMLElement).style.color = '#FCA5A5';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = '';
+              (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)';
+            }}
+            title={collapsed ? 'Log Out' : undefined}
           >
-            <LogOut className="h-4 w-4" />
-            <span>Log Out</span>
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!collapsed && (
+              <span className="text-[13px] font-medium">Log Out</span>
+            )}
           </button>
         </div>
       </aside>
     </>
   );
 };
+
 export default Sidebar;

@@ -2,236 +2,409 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Terminal, Shield, Activity } from "lucide-react";
+import { ArrowRight, Shield, Terminal, Activity, Zap } from "lucide-react";
+
+const BARS = 24;
 
 export default function Hero() {
-  const [telemetrySignal, setTelemetrySignal] = useState<number[]>([]);
-  const [liveScore, setLiveScore] = useState(88);
+  const [bars,      setBars]      = useState<number[]>([]);
+  const [liveScore, setLiveScore] = useState(91);
+  const [mounted,   setMounted]   = useState(false);
 
-  // Generate real-time waveform values for the verification signal
+  /* Waveform animation */
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTelemetrySignal(
-        Array.from({ length: 22 }, () => Math.floor(Math.random() * 55) + 15)
-      );
-    }, 150);
-    return () => clearInterval(interval);
+    setMounted(true);
+    setBars(Array.from({ length: BARS }, () => Math.floor(Math.random() * 55) + 18));
+    const iv = setInterval(() => {
+      setBars(Array.from({ length: BARS }, () => Math.floor(Math.random() * 55) + 18));
+    }, 140);
+    return () => clearInterval(iv);
   }, []);
 
-  // Soft oscillation of verification score to show "live calculation"
+  /* Score oscillation */
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveScore((prev) => {
-        const offset = Math.random() > 0.5 ? 1 : -1;
-        const next = prev + offset;
-        return next > 98 ? 95 : next < 85 ? 88 : next;
+    const iv = setInterval(() => {
+      setLiveScore((p) => {
+        const n = p + (Math.random() > 0.5 ? 1 : -1);
+        return n > 97 ? 94 : n < 86 ? 89 : n;
       });
-    }, 2000);
-    return () => clearInterval(interval);
+    }, 2200);
+    return () => clearInterval(iv);
   }, []);
 
   return (
-    <section className="relative min-h-[100vh] pt-40 pb-28 flex items-center bg-[#030914] overflow-hidden text-slate-100 z-10">
-      
-      {/* Background Circuit Grid & Organic Accent Glows */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[65%] h-[75%] bg-gradient-to-br from-[#0D47A1]/20 via-[#42A5F5]/8 to-transparent rounded-full blur-[140px]" />
-        <div className="absolute bottom-[-10%] left-[-15%] w-[55%] h-[65%] bg-gradient-to-tr from-[#1976D2]/10 to-transparent rounded-full blur-[140px]" />
-        
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.015)_1px,transparent_1px)] [background-size:32px_32px] opacity-80" />
+    <section
+      className="relative min-h-[100svh] flex items-center overflow-hidden text-slate-100 z-10 pt-28 pb-20"
+      style={{ background: "#030914" }}
+    >
+      {/* ── Background mesh ───────────────────────────────── */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Radial glows */}
+        <div
+          className="absolute"
+          style={{
+            top: "-15%", right: "-10%",
+            width: "70%", height: "80%",
+            background: "radial-gradient(ellipse, rgba(13,71,161,0.22) 0%, transparent 65%)",
+          }}
+        />
+        <div
+          className="absolute"
+          style={{
+            bottom: "-20%", left: "-10%",
+            width: "55%", height: "70%",
+            background: "radial-gradient(ellipse, rgba(25,118,210,0.1) 0%, transparent 60%)",
+          }}
+        />
+        {/* Dot grid */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.018) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
       </div>
 
-      {/* SVG Verification Thread: Initializing Page-wide trace */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none" overflow="visible">
+      {/* ── Background SVG thread ─────────────────────────── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <svg
+          className="absolute w-full h-full"
+          viewBox="0 0 1200 900"
+          preserveAspectRatio="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <defs>
-            <linearGradient id="hero-thread-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#42A5F5" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#0D47A1" stopOpacity="1" />
+            <linearGradient id="thread-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%"   stopColor="#42A5F5" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#0D47A1" stopOpacity="0.8" />
             </linearGradient>
           </defs>
-          
-          {/* Main vertical thread running down from header, branching to telemetry panel */}
           <path
-            d="M 600,0 L 600,280 Q 600,380 750,380 L 800,380 Q 900,380 900,480 L 900,500 L 600,650 L 600,800"
-            fill="none"
-            stroke="#162A45"
-            strokeWidth="2.5"
+            d="M 600,0 L 600,280 Q 600,380 760,380 L 820,380 Q 920,380 920,460 L 920,520 L 600,680 L 600,900"
+            fill="none" stroke="rgba(22,46,92,0.6)" strokeWidth="1.5"
           />
-          
           <path
-            d="M 600,0 L 600,280 Q 600,380 750,380 L 800,380 Q 900,380 900,480 L 900,500 L 600,650 L 600,800"
-            fill="none"
-            stroke="url(#hero-thread-grad)"
-            strokeWidth="3.5"
-            strokeDasharray="80 320"
-            className="animate-hero-flow"
+            d="M 600,0 L 600,280 Q 600,380 760,380 L 820,380 Q 920,380 920,460 L 920,520 L 600,680 L 600,900"
+            fill="none" stroke="url(#thread-grad)" strokeWidth="2"
+            strokeDasharray="60 280" className="animate-hero-flow"
           />
-          
-          {/* Node origin point */}
-          <circle cx="600" cy="10" r="5" fill="#42A5F5" />
+          <circle cx="600" cy="8" r="4" fill="#42A5F5" opacity="0.8" />
+          <circle cx="600" cy="8" r="8" fill="#42A5F5" opacity="0.15" />
         </svg>
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-center z-10">
-        
-        {/* Left Column: Bold Typography */}
-        <div className="lg:col-span-6 space-y-8 text-left">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 shadow-sm text-slate-350 text-[10px] font-black tracking-widest uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      {/* ── Content ───────────────────────────────────────── */}
+      <div className="relative max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center z-10">
+
+        {/* Left — Copy */}
+        <div className="lg:col-span-6 space-y-8">
+
+          {/* Live indicator pill */}
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.6)",
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: "#10B981", boxShadow: "0 0 6px #10B981", animation: "glow-pulse 2s ease-in-out infinite" }}
+            />
             Verification Engine Live
           </div>
 
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black text-white tracking-tighter leading-[0.95] font-outfit">
-            The Future of <br />
-            <span className="bg-gradient-to-r from-[#42A5F5] via-[#1976D2] to-[#FFC107] bg-clip-text text-transparent">
+          {/* Main headline */}
+          <h1
+            className="font-outfit font-black leading-[0.95] tracking-tighter"
+            style={{ fontSize: "clamp(3rem, 7vw, 5.5rem)" }}
+          >
+            <span className="block text-white/90 mb-2">The Future of</span>
+            <span
+              style={{
+                background: "linear-gradient(135deg, #42A5F5 0%, #1976D2 45%, #FFC107 100%)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundSize: "200% 100%",
+              }}
+            >
               Hiring is Verified.
             </span>
           </h1>
 
-          <p className="text-base text-slate-400 leading-relaxed max-w-lg font-medium font-sans">
-            CAPVIA replaces biased resumes with evidence-based, verified developer DNA through real-time code sandboxes and proctored AI interviews.
+          {/* Subtext */}
+          <p
+            className="text-base leading-relaxed max-w-lg font-inter"
+            style={{ color: "rgba(148,163,184,0.85)" }}
+          >
+            CAPVIA replaces biased resumes with evidence-based, verified developer
+            DNA — through real-time code sandboxes and proctored AI interviews.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row gap-3">
             <Link
               href="/internships"
-              className="group flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl bg-white text-slate-900 font-bold text-[10px] hover:bg-slate-100 transition-all duration-300 hover:shadow-xl hover:shadow-white/10 hover:-translate-y-0.5 tracking-widest uppercase"
+              className="group flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                background: "white",
+                color: "#0F172A",
+                boxShadow: "0 4px 20px rgba(255,255,255,0.12)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px rgba(255,255,255,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(255,255,255,0.12)";
+              }}
             >
               Find Internship
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </Link>
+
             <Link
               href="/auth/register"
-              className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-slate-900/60 border border-slate-800 text-white font-bold text-[10px] hover:bg-slate-900 hover:border-slate-700 transition-all duration-300 hover:-translate-y-0.5 tracking-widest uppercase shadow-sm"
+              className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-[11px] uppercase tracking-widest text-white/80 hover:text-white transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+              }}
             >
               Hire Talent
             </Link>
           </div>
+
+          {/* Trust line */}
+          <div className="flex items-center gap-4">
+            {[
+              { icon: Shield,   text: "Proctored Integrity" },
+              { icon: Terminal, text: "Live Code Sandbox" },
+              { icon: Zap,      text: "DNA Verified" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-1.5">
+                <Icon className="w-3 h-3" style={{ color: "#42A5F5" }} />
+                <span className="text-[10px] font-semibold" style={{ color: "rgba(148,163,184,0.7)" }}>
+                  {text}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Right Column: Immersive Live Telemetry Glass Panel */}
-        <div className="lg:col-span-6 flex justify-center lg:justify-end w-full">
-          <div className="w-full max-w-xl bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-[0_0_50px_rgba(3,9,20,0.8)] backdrop-blur-md relative overflow-hidden group hover:border-slate-700/80 transition-all duration-500">
-            
-            {/* Ambient reflective glow inside the card */}
-            <div className="absolute top-0 right-0 w-52 h-52 bg-[#42A5F5]/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Right — Live telemetry panel */}
+        <div className="lg:col-span-6 flex justify-center lg:justify-end">
+          <div
+            className="w-full max-w-lg relative group"
+            style={{
+              background: "rgba(8,21,46,0.7)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 24,
+              padding: "28px",
+              boxShadow: "0 32px 80px rgba(3,9,20,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset",
+            }}
+          >
+            {/* Ambient glow */}
+            <div
+              className="absolute top-0 right-0 pointer-events-none"
+              style={{
+                width: 220, height: 220,
+                background: "radial-gradient(circle, rgba(66,165,245,0.08) 0%, transparent 70%)",
+              }}
+            />
 
-            {/* Sweep Laser Scanner Animation */}
-            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#42A5F5]/80 to-transparent shadow-[0_0_12px_#42A5F5] z-30 pointer-events-none animate-scan-line" />
+            {/* Scan line animation */}
+            <div
+              className="absolute left-0 right-0 h-px pointer-events-none animate-scan-line"
+              style={{
+                background: "linear-gradient(90deg, transparent, rgba(66,165,245,0.7), transparent)",
+                boxShadow: "0 0 12px rgba(66,165,245,0.4)",
+              }}
+            />
 
-            {/* Live telemetry header */}
-            <div className="flex items-center justify-between pb-6 border-b border-slate-800/80 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black tracking-widest text-slate-450 uppercase">Verification Signal Radar</span>
+            {/* Panel header */}
+            <div
+              className="flex items-center justify-between pb-5 mb-5"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: "#10B981", boxShadow: "0 0 8px #10B981", animation: "glow-pulse 2s ease-in-out infinite" }}
+                />
+                <span className="text-[10px] font-black tracking-widest uppercase" style={{ color: "rgba(148,163,184,0.5)" }}>
+                  Verification Signal Radar
+                </span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-[#42A5F5] bg-[#42A5F5]/10 px-2.5 py-1 rounded-lg border border-[#42A5F5]/20">
-                <Activity className="w-3 h-3 text-[#42A5F5] animate-pulse" />
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold"
+                style={{
+                  background: "rgba(66,165,245,0.1)",
+                  border: "1px solid rgba(66,165,245,0.2)",
+                  color: "#42A5F5",
+                }}
+              >
+                <Activity className="w-3 h-3" style={{ animation: "glow-pulse 2s ease-in-out infinite" }} />
                 TELEMETRY ACTIVE
               </div>
             </div>
 
-            {/* The Live Thread Signal Visualizer */}
-            <div className="relative h-44 bg-slate-950/80 rounded-2xl p-6 overflow-hidden flex flex-col justify-between border border-slate-850 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)]">
-              <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:100%_6px] pointer-events-none" />
-              
-              <div className="flex items-center justify-between z-10">
+            {/* Waveform visualizer */}
+            <div
+              className="relative overflow-hidden flex flex-col justify-between"
+              style={{
+                height: 168,
+                background: "rgba(3,9,20,0.8)",
+                borderRadius: 16,
+                padding: "16px",
+                border: "1px solid rgba(255,255,255,0.04)",
+                boxShadow: "inset 0 2px 8px rgba(0,0,0,0.6)",
+              }}
+            >
+              {/* Scan lines overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 5px, rgba(255,255,255,0.008) 5px, rgba(255,255,255,0.008) 6px)",
+                }}
+              />
+
+              {/* Terminal header */}
+              <div className="flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-2">
-                  <Terminal className="w-3.5 h-3.5 text-[#42A5F5]" />
-                  <span className="text-[9px] font-mono text-[#42A5F5] uppercase tracking-wider">Candidate_Verification_Thread</span>
+                  <Terminal className="w-3 h-3" style={{ color: "#42A5F5" }} />
+                  <span className="text-[9px] font-mono" style={{ color: "#42A5F5", letterSpacing: "0.08em" }}>
+                    Candidate_Verification_Thread
+                  </span>
                 </div>
-                <span className="text-[9px] font-mono text-emerald-400 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
+                <span className="text-[9px] font-mono flex items-center gap-1.5" style={{ color: "#10B981" }}>
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: "#10B981", animation: "glow-pulse 1.5s ease-in-out infinite" }}
+                  />
                   PROCTORED
                 </span>
               </div>
 
-              {/* Running Signal Path Wave */}
-              <div className="flex items-end justify-between gap-1 h-20 w-full z-10 border-b border-slate-850 pb-2">
-                {telemetrySignal.map((h, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 bg-gradient-to-t from-[#0D47A1] via-[#1976D2] to-[#42A5F5] rounded-t-sm transition-all duration-150 shadow-[0_0_8px_rgba(66,165,245,0.15)]"
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
-              </div>
+              {/* Bars */}
+              {mounted && (
+                <div className="flex items-end justify-between gap-px h-16 relative z-10 mt-auto">
+                  {bars.map((h, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-t-sm transition-all duration-150"
+                      style={{
+                        height: `${h}%`,
+                        background: `linear-gradient(to top, #0D47A1, #1976D2, #42A5F5)`,
+                        boxShadow: "0 0 6px rgba(66,165,245,0.12)",
+                        opacity: 0.8 + (i % 3) * 0.07,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
 
-              {/* Connected node indicator */}
-              <div className="flex items-center justify-between z-10">
-                <span className="text-[9px] font-mono text-slate-500 uppercase">SYS_LOG: PIPELINE_STAGE_03</span>
-                <span className="text-[9px] font-mono text-[#FFC107] animate-pulse">OPTIMIZING_IDE_METRICS</span>
+              <div className="flex items-center justify-between relative z-10 mt-2">
+                <span className="text-[8px] font-mono" style={{ color: "rgba(100,116,139,0.7)" }}>
+                  SYS_LOG: PIPELINE_STAGE_03
+                </span>
+                <span
+                  className="text-[8px] font-mono"
+                  style={{ color: "#FFC107", animation: "glow-pulse 2s ease-in-out infinite" }}
+                >
+                  OPTIMIZING_IDE_METRICS
+                </span>
               </div>
             </div>
 
-            {/* Candidate DNA Passport Blueprint */}
-            <div className="mt-6 bg-slate-950/40 border border-slate-850 rounded-2xl p-5 relative overflow-hidden">
-              <div className="flex items-start justify-between">
+            {/* Candidate DNA card */}
+            <div
+              className="mt-4 relative overflow-hidden"
+              style={{
+                background: "rgba(3,9,20,0.5)",
+                borderRadius: 16,
+                padding: "18px",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-900 to-slate-800 flex items-center justify-center font-outfit text-white font-extrabold text-xs shadow-md border border-slate-800">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-outfit font-black text-xs text-white"
+                    style={{
+                      background: "linear-gradient(135deg, #0D47A1, #1976D2)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
                     HA
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-slate-200">Huzaifa Ansari</h3>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Candidate DNA Verified</p>
+                    <p className="text-[12px] font-bold text-white/90">Huzaifa Ansari</p>
+                    <p className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: "rgba(100,116,139,0.6)" }}>
+                      Candidate DNA Verified
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-950/30 rounded-lg text-emerald-400 border border-emerald-500/25 shadow-sm">
+
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider"
+                  style={{
+                    background: "rgba(16,185,129,0.12)",
+                    border: "1px solid rgba(16,185,129,0.25)",
+                    color: "#10B981",
+                  }}
+                >
                   <Shield className="w-3 h-3" />
-                  <span className="text-[9px] font-black uppercase tracking-wider">VERIFIED</span>
+                  VERIFIED
                 </div>
               </div>
 
-              {/* Progress bars illustrating verified vectors */}
-              <div className="grid grid-cols-3 gap-3.5 mt-5">
+              {/* Stats bars */}
+              <div className="space-y-2.5">
                 {[
-                  { name: "Code Optimization", value: 92 },
-                  { name: "System Architecture", value: 85 },
-                  { name: "AI Speech Integrity", value: 95 },
-                ].map((stat, idx) => (
-                  <div key={stat.name} className="space-y-1.5">
-                    <span className="text-[8px] font-extrabold text-slate-500 uppercase block tracking-wider leading-tight">{stat.name}</span>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-full h-1 bg-slate-850 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-[#1976D2] to-[#42A5F5] rounded-full transition-all duration-1000" 
-                          style={{ width: `${idx === 2 ? liveScore : stat.value}%` }} 
-                        />
-                      </div>
-                      <span className="text-[8px] font-mono font-black text-slate-400 w-6">
-                        {idx === 2 ? liveScore : stat.value}%
+                  { name: "Code Optimization",    value: 92 },
+                  { name: "System Architecture",  value: 85 },
+                  { name: "AI Speech Integrity",  value: mounted ? liveScore : 91 },
+                ].map((stat) => (
+                  <div key={stat.name}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "rgba(100,116,139,0.7)" }}>
+                        {stat.name}
                       </span>
+                      <span className="text-[9px] font-mono font-black" style={{ color: "#42A5F5" }}>
+                        {stat.value}%
+                      </span>
+                    </div>
+                    <div
+                      className="w-full h-1 rounded-full overflow-hidden"
+                      style={{ background: "rgba(255,255,255,0.05)" }}
+                    >
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${stat.value}%`,
+                          background: "linear-gradient(90deg, #1976D2, #42A5F5)",
+                        }}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
           </div>
         </div>
-
       </div>
-
-      <style jsx global>{`
-        @keyframes scan-line-movement {
-          0% { top: 0%; opacity: 0; }
-          10% { opacity: 0.8; }
-          90% { opacity: 0.8; }
-          100% { top: 100%; opacity: 0; }
-        }
-        .animate-scan-line {
-          animation: scan-line-movement 6s linear infinite;
-        }
-        @keyframes hero-thread-flow {
-          0% { stroke-dashoffset: 400; }
-          100% { stroke-dashoffset: 0; }
-        }
-        .animate-hero-flow {
-          animation: hero-thread-flow 8s linear infinite;
-        }
-      `}</style>
     </section>
   );
 }

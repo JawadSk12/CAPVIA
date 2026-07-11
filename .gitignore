@@ -31,3 +31,8 @@ mongodb_data/
 ._*
 **/._*
 Thumbs.db
+
+# Temp/Cache files ignored
+.capvia_pids
+**/tsconfig.tsbuildinfo
+

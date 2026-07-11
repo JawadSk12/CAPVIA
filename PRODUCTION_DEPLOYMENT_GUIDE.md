@@ -38,7 +38,7 @@ This is the easiest path for hosting in the cloud. Instead of setting up environ
 ### 1. Link Your Git Repo
 1. Log in to [Render](https://render.com).
 2. Click **New** → **Blueprint**.
-3. Select your repository `JawadSk12/CAPVIA` (or click **Connect** if not linked).
+3. Select your repository `JawadSk12/CAPVIA` (or click **Connect** if not linked).x
 
 ### 2. Input Environment Variables (Only Once!)
 Render will show a single page listing all required environment variables:

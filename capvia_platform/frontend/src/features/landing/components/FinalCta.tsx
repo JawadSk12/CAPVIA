@@ -1,85 +1,122 @@
 "use client";
 
 import React from "react";
+import { ArrowRight, Sparkles, BrainCircuit } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function FinalCta() {
   return (
-    <section className="relative py-48 bg-[#030914] text-white overflow-hidden text-center border-t border-slate-900 z-10">
-      
-      {/* Background Visual aperture and micro-dot grid */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[500px] bg-[#42A5F5]/10 rounded-full blur-[140px]" />
-        
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.015)_1px,transparent_1px)] [background-size:24px_24px] opacity-80" />
+    <section
+      className="py-28 md:py-36 relative overflow-hidden"
+      style={{ background: "#030914" }}
+    >
+      {/* Background mesh */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(13,71,161,0.18) 0%, transparent 65%)",
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.018) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
       </div>
 
-      {/* SVG Thread trace running vertically and terminating at a single center convergence node */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <svg className="w-full h-full" viewBox="0 0 1200 450" preserveAspectRatio="none" overflow="visible">
-          {/* Incoming vertical line */}
-          <line x1="600" y1="0" x2="600" y2="300" stroke="#162A45" strokeWidth="2.5" />
-          <line x1="600" y1="0" x2="600" y2="300" stroke="#42A5F5" strokeWidth="2.5" strokeDasharray="30 140" className="animate-cta-thread" />
-          
-          {/* Radial circuit paths gathering into the convergence point */}
-          <path d="M 400,280 L 520,300 L 600,300" fill="none" stroke="#162A45" strokeWidth="1.5" strokeDasharray="5 5" />
-          <path d="M 800,280 L 680,300 L 600,300" fill="none" stroke="#162A45" strokeWidth="1.5" strokeDasharray="5 5" />
-          
-          {/* Large glowing convergence node */}
-          <circle cx="600" cy="300" r="10" fill="#FFC107" className="animate-ping opacity-25" />
-          <circle cx="600" cy="300" r="6" fill="#FFC107" className="shadow-[0_0_25px_#FFC107]" />
-        </svg>
-      </div>
-
-      <div className="relative max-w-4xl mx-auto px-6 space-y-10 z-10">
-        
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-350 text-[10px] font-black tracking-widest uppercase shadow-sm">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#FFC107]" />
-          Join the Verification Network
+      <div className="relative max-w-4xl mx-auto px-6 text-center">
+        {/* Eyebrow */}
+        <div className="inline-flex items-center gap-2 mb-6">
+          <span
+            className="w-px h-8 block"
+            style={{ background: "linear-gradient(to bottom, transparent, #42A5F5, transparent)" }}
+          />
+          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#42A5F5" }}>
+            The Future of Hiring
+          </span>
+          <span
+            className="w-px h-8 block"
+            style={{ background: "linear-gradient(to bottom, transparent, #42A5F5, transparent)" }}
+          />
         </div>
 
-        <h2 className="text-6xl md:text-8xl font-black font-outfit tracking-tighter leading-none text-white max-w-3xl mx-auto">
-          Ready to verify <br />
-          <span className="bg-gradient-to-r from-[#42A5F5] to-[#FFC107] bg-clip-text text-transparent">
-            true competence?
+        {/* Headline */}
+        <h2
+          className="font-outfit font-black text-white tracking-tighter mb-6"
+          style={{ fontSize: "clamp(2.5rem, 5.5vw, 4.2rem)", lineHeight: 1.0 }}
+        >
+          Stop Hiring on<br />
+          <span
+            style={{
+              background: "linear-gradient(135deg, #42A5F5 0%, #1976D2 40%, #FFC107 100%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            Assumptions.
           </span>
         </h2>
 
-        <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed font-medium">
-          Let demonstrated capability speak louder than credentials. Sign up now and experience hiring based on proven merit.
+        <p
+          className="text-base max-w-lg mx-auto leading-relaxed mb-10 font-medium"
+          style={{ color: "rgba(148,163,184,0.75)" }}
+        >
+          Join thousands of companies that have switched to evidence-based,
+          AI-verified hiring through CAPVIA's DNA-first platform.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6 relative">
-          
-          {/* Buttons offset to align around the convergence wire marker */}
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             href="/auth/register"
-            className="group w-full sm:w-auto flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl bg-[#FFC107] text-slate-950 font-bold text-[10px] hover:bg-[#ffca28] transition-all duration-300 shadow-[0_0_15px_rgba(255,193,7,0.3)] hover:shadow-[0_0_25px_rgba(255,193,7,0.5)] hover:-translate-y-0.5 tracking-widest uppercase ring-4 ring-[#FFC107]/20"
+            className="group flex items-center gap-2.5 px-8 py-4 rounded-2xl font-bold text-[12px] uppercase tracking-widest text-white transition-all hover:-translate-y-0.5"
+            style={{
+              background: "#0D47A1",
+              boxShadow: "0 4px 24px rgba(13,71,161,0.4), 0 0 0 1px rgba(66,165,245,0.2) inset",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 40px rgba(13,71,161,0.5), 0 0 0 1px rgba(66,165,245,0.3) inset";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(13,71,161,0.4), 0 0 0 1px rgba(66,165,245,0.2) inset";
+            }}
           >
-            <span>Get Started Free</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform text-slate-950" />
+            <BrainCircuit className="w-4 h-4" />
+            Start Hiring Smarter
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
-          
+
           <Link
             href="/internships"
-            className="w-full sm:w-auto text-[10px] font-bold text-slate-400 hover:text-white px-8 py-4 rounded-xl hover:bg-white/5 transition-all duration-300 border border-slate-700 hover:border-slate-500 tracking-widest uppercase"
+            className="flex items-center gap-2 px-7 py-4 rounded-2xl font-bold text-[12px] uppercase tracking-widest transition-all hover:-translate-y-0.5"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.7)",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+              (e.currentTarget as HTMLElement).style.color = "white";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.7)";
+            }}
           >
-            Explore Internships
+            <Sparkles className="w-4 h-4" />
+            Browse Internships
           </Link>
         </div>
-      </div>
 
-      <style jsx global>{`
-        @keyframes cta-thread-movement {
-          0% { stroke-dashoffset: 170; }
-          100% { stroke-dashoffset: 0; }
-        }
-        .animate-cta-thread {
-          animation: cta-thread-movement 6s linear infinite;
-        }
-      `}</style>
+        {/* Social proof */}
+        <p className="text-[10px] font-semibold mt-8 uppercase tracking-widest" style={{ color: "rgba(100,116,139,0.5)" }}>
+          No credit card required · Full access · Free for candidates
+        </p>
+      </div>
     </section>
   );
 }
