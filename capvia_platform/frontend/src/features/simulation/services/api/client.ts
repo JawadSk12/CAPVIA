@@ -1,7 +1,8 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { toast } from 'react-hot-toast';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = rawBaseUrl.endsWith('/api/v1') ? rawBaseUrl.slice(0, -7) : rawBaseUrl;
 
 class ApiClient {
     private client: AxiosInstance;
