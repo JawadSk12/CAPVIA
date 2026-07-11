@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
+import { API_URL } from "@/lib/env";
 
 /**
  * AuthInitializer component.
@@ -17,7 +18,7 @@ export default function AuthInitializer({ children }: { children: React.ReactNod
       initialized.current = true;
       
       // First verify backend is reachable
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/health/ping`)
+      fetch(`${API_URL}/api/v1/health/ping`)
         .then(r => r.json())
         .then(() => {
           console.log("Backend reachable, initializing session...");

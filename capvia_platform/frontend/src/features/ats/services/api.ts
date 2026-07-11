@@ -22,6 +22,7 @@ import axios, {
     InternalAxiosRequestConfig,
 } from "axios";
 import toast from "react-hot-toast";
+import { API_URL, ATS_URL } from "@/lib/env";
 import {
     ATSAnalysisResponse,
     CandidateRankingResponse,
@@ -62,12 +63,10 @@ export const tokenStore = {
     },
 };
 
-// ─── Axios Instance ───────────────────────────────────────────────────────────
-
 const api: AxiosInstance = axios.create({
     // ATS service runs on port 8001 — use NEXT_PUBLIC_ATS_URL to avoid double /api/v1
     // NEXT_PUBLIC_API_URL includes /api/v1 prefix (for gateway), ATS paths already include /api/v1/
-    baseURL: process.env.NEXT_PUBLIC_ATS_URL || "http://localhost:8001",
+    baseURL: ATS_URL,
     timeout: 30000,
     withCredentials: true,   // Send httpOnly cookies with every request
     headers: {
@@ -150,7 +149,7 @@ async function _refreshAccessToken(): Promise<string | null> {
         if (!refreshToken) return null;
 
         // Auth refresh lives on the gateway (port 8000). API_URL already includes /api/v1.
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+        const baseUrl = API_URL;
         const response = await axios.post(
             `${baseUrl}/auth/refresh`,
             { refresh_token: refreshToken },

@@ -22,6 +22,7 @@ import axios, {
     InternalAxiosRequestConfig,
 } from "axios";
 import toast from "react-hot-toast";
+import { API_URL } from "./env";
 import {
     ATSAnalysisResponse,
     CandidateRankingResponse,
@@ -52,7 +53,7 @@ export const tokenStore = {
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 
 const api: AxiosInstance = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+    baseURL: API_URL,
     timeout: 30000,
     withCredentials: true,   // Send httpOnly cookies with every request
     headers: {
@@ -131,7 +132,7 @@ async function _refreshAccessToken(): Promise<string | null> {
         if (!refreshToken) return null;
 
         const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
+            `${API_URL}/api/v1/auth/refresh`,
             { refresh_token: refreshToken },
             { withCredentials: true },
         );
@@ -269,7 +270,7 @@ export const resumeApi = {
         // We need to send the auth token as a query param for SSE
         const token = tokenStore.get();
         const url = new URL(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/resume/${resumeId}/rewrite`
+            `${API_URL}/api/v1/resume/${resumeId}/rewrite`
         );
 
         // POST request for SSE is done via fetch + ReadableStream
@@ -418,7 +419,7 @@ export const hrApi = {
     exportCSV: async (jdId: string): Promise<void> => {
         const token = tokenStore.get();
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/hr/export/${jdId}`,
+            `${API_URL}/api/v1/hr/export/${jdId}`,
             { headers: { Authorization: `Bearer ${token}` }, credentials: "include" },
         );
         const blob = await response.blob();
