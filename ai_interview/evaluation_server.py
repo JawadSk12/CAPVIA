@@ -152,6 +152,7 @@ async def evaluate(req: EvaluationRequest):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    import uvicorn
-    logger.info("Starting AI Interview Evaluation Server on http://localhost:8765")
-    uvicorn.run(app, host="0.0.0.0", port=8765, log_level="info")
+    import os
+    port = int(os.environ.get("PORT", 8765))
+    logger.info(f"Starting AI Interview Evaluation Server on http://localhost:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

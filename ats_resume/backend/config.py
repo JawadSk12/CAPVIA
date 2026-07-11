@@ -173,7 +173,7 @@ class Settings(BaseSettings):
             if self.DEBUG:
                 raise ValueError("DEBUG must be False in production")
             if self.DOCS_URL is not None:
-                raise ValueError("DOCS_URL must be None in production")
+                self.DOCS_URL = None
             if not self.AWS_ACCESS_KEY_ID:
                 raise ValueError("AWS_ACCESS_KEY_ID required in production")
             if not self.SENTRY_DSN:
