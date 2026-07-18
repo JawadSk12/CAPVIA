@@ -44,8 +44,10 @@ def create_app() -> FastAPI:
             "https://www.capvia.in",
             "https://ats.capvia.in",
             "https://simulation.capvia.in",
+            # Vercel deployments
+            "https://capvia-mu.vercel.app",
         ],
-        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.capvia\.in)(:\d+)?$",
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.capvia\.in|.*\.vercel\.app)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
