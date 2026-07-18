@@ -98,11 +98,16 @@ async def register_user(
     # Generate Email Verification Token
     verify_token = secrets.token_urlsafe(32)
     # Store token in Redis pointing to user email (24-hour expiration)
-    await redis.set(f"email_verify:{verify_token}", str(payload.email), ex=86400)
+    try:
+        await redis.set(f"email_verify:{verify_token}", str(payload.email), ex=86400)
+    except Exception as redis_err:
+        import logging
+        logging.getLogger("auth").warning(f"Redis unavailable, email verify token not stored: {redis_err}")
     
     # Print simulated email link to console
-    verify_link = f"http://localhost:3000/auth/verify?token={verify_token}"
-    print(f"\n[SIMULATED EMAIL SENDER] Verification link for {payload.email}:\n{verify_link}\n")
+    frontend_url = settings.NEXT_PUBLIC_API_URL.replace("/api/v1", "").replace("api.", "") if hasattr(settings, 'NEXT_PUBLIC_API_URL') else "http://localhost:3000"
+    verify_link = f"{frontend_url}/auth/verify?token={verify_token}"
+    print(f"\n[EMAIL] Verification link for {payload.email}:\n{verify_link}\n")
     role_str = "candidate" if new_user.role == UserRole.STUDENT else new_user.role.value.lower()
     access_token = create_access_token(new_user.id, new_user.email, role_str)
     refresh_token = create_refresh_token(new_user.id)
@@ -367,11 +372,16 @@ async def forgot_password(
     # Generate reset token
     reset_token = secrets.token_urlsafe(32)
     # Store token with 15-minute TTL
-    await redis.set(f"reset_pass:{reset_token}", str(user.email), ex=900)
+    try:
+        await redis.set(f"reset_pass:{reset_token}", str(user.email), ex=900)
+    except Exception as redis_err:
+        import logging
+        logging.getLogger("auth").warning(f"Redis unavailable, reset token not stored: {redis_err}")
     
     # Print simulated reset link
-    reset_link = f"http://localhost:3000/auth/reset-password?token={reset_token}"
-    print(f"\n[SIMULATED EMAIL SENDER] Password Reset link for {user.email}:\n{reset_link}\n")
+    frontend_url = settings.NEXT_PUBLIC_API_URL.replace("/api/v1", "").replace("api.", "") if hasattr(settings, 'NEXT_PUBLIC_API_URL') else "http://localhost:3000"
+    reset_link = f"{frontend_url}/auth/reset-password?token={reset_token}"
+    print(f"\n[EMAIL] Password Reset link for {user.email}:\n{reset_link}\n")
     
     # Write Audit Log
     audit = ActivityLog(
@@ -396,11 +406,14 @@ async def reset_password(
     """
     Validates password reset token, updates password, and revokes all active sessions.
     """
-    email_bytes = await redis.get(f"reset_pass:{payload.token}")
+    try:
+        email_bytes = await redis.get(f"reset_pass:{payload.token}")
+    except Exception:
+        email_bytes = None
     if not email_bytes:
         raise BaseAPIException("Invalid or expired password reset token", status_code=400, code="BAD_REQUEST")
         
-    email_str = email_bytes.decode('utf-8')
+    email_str = email_bytes.decode('utf-8') if isinstance(email_bytes, bytes) else str(email_bytes)
     
     stmt = select(User).where(User.email == email_str)
     res = await db.execute(stmt)
@@ -417,7 +430,10 @@ async def reset_password(
     await db.execute(revoke_all)
     
     # Delete token from Redis
-    await redis.delete(f"reset_pass:{payload.token}")
+    try:
+        await redis.delete(f"reset_pass:{payload.token}")
+    except Exception:
+        pass
     
     # Write Audit Log
     audit = ActivityLog(
@@ -438,11 +454,14 @@ async def verify_email(
     """
     Verifies user's email using token from Redis, activating the profile.
     """
-    email_bytes = await redis.get(f"email_verify:{payload.token}")
+    try:
+        email_bytes = await redis.get(f"email_verify:{payload.token}")
+    except Exception:
+        email_bytes = None
     if not email_bytes:
         raise BaseAPIException("Invalid or expired email verification token", status_code=400, code="BAD_REQUEST")
         
-    email_str = email_bytes.decode('utf-8')
+    email_str = email_bytes.decode('utf-8') if isinstance(email_bytes, bytes) else str(email_bytes)
     
     stmt = select(User).where(User.email == email_str)
     res = await db.execute(stmt)
@@ -455,7 +474,10 @@ async def verify_email(
     user.is_active = True
     
     # Delete token
-    await redis.delete(f"email_verify:{payload.token}")
+    try:
+        await redis.delete(f"email_verify:{payload.token}")
+    except Exception:
+        pass
     
     # Write Audit Log
     audit = ActivityLog(

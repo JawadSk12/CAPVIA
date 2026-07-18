@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Interview Engine Settings
     INTERVIEW_ENGINE_URL: str = "http://localhost:8765"
     
+    # Frontend URL (used to build email links)
+    NEXT_PUBLIC_API_URL: str = "http://localhost:8000/api/v1"
+    
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
