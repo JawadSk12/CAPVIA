@@ -55,7 +55,7 @@ async def register_user(
         password_hash=hashed_pwd,
         full_name=payload.full_name,
         role=db_role,
-        is_active=True if settings.ENVIRONMENT == "development" else False
+        is_active=True  # Auto-activate on registration; email verification is a separate optional flow
     )
     
     db.add(new_user)
