@@ -28,6 +28,9 @@ services:
       - fromGroup: capvia-shared-env
       - key: PORT
         value: 10001
+      - key: DATABASE_URL
+        sync: false
+        placeholder: "Paste your Neon Postgres ATS Database URL (e.g. ending in /ats_db)"
 
   # 3. Simulation Backend API
   - type: web
@@ -43,6 +46,9 @@ services:
       - fromGroup: capvia-shared-env
       - key: PORT
         value: 10002
+      - key: DATABASE_URL
+        sync: false
+        placeholder: "Paste your Neon Postgres Simulation Database URL (e.g. ending in /ai_simulation)"
 
   # 4. Interview Evaluation API
   - type: web
