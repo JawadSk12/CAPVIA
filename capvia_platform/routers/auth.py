@@ -452,20 +452,30 @@ async def verify_email(
     redis: aioredis.Redis = Depends(get_redis)
 ):
     """
-    Verifies user's email using token from Redis, activating the profile.
+    Verifies user's email using token from Redis (or fallback payload email), activating the profile.
     """
+    email_str = None
     try:
         email_bytes = await redis.get(f"email_verify:{payload.token}")
+        if email_bytes:
+            email_str = email_bytes.decode('utf-8') if isinstance(email_bytes, bytes) else str(email_bytes)
     except Exception:
-        email_bytes = None
-    if not email_bytes:
+        email_str = None
+
+    if not email_str and payload.email:
+        email_str = payload.email
+
+    if not email_str:
         raise BaseAPIException("Invalid or expired email verification token", status_code=400, code="BAD_REQUEST")
         
-    email_str = email_bytes.decode('utf-8') if isinstance(email_bytes, bytes) else str(email_bytes)
-    
     stmt = select(User).where(User.email == email_str)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
+
+    if not user and payload.email:
+        stmt = select(User).where(User.email == payload.email)
+        res = await db.execute(stmt)
+        user = res.scalar_one_or_none()
     
     if not user:
         raise BaseAPIException("User account not found", status_code=404, code="NOT_FOUND")
@@ -483,11 +493,35 @@ async def verify_email(
     audit = ActivityLog(
         user_id=user.id,
         action="EMAIL_VERIFIED",
-        description="Email address verified and user account activated."
+        description=f"Email verified successfully for user {user.email}."
     )
     db.add(audit)
     
-    return {"success": True, "message": "Email address verified successfully. Your account is now active."}
+    return {"success": True, "message": "Email verified successfully. You can now login to your account."}
+
+@router.get("/admin/users", tags=["Admin"])
+async def list_admin_users(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["admin", "hr"]))
+):
+    """
+    Returns list of registered users for Admin and HR dashboard view.
+    """
+    stmt = select(User).order_by(User.created_at.desc())
+    res = await db.execute(stmt)
+    users = res.scalars().all()
+    
+    return [
+        {
+            "id": str(u.id),
+            "full_name": u.full_name,
+            "email": u.email,
+            "role": u.role.value if hasattr(u.role, 'value') else str(u.role),
+            "is_active": u.is_active,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u in users
+    ]
 
 @router.get("/me", tags=["Auth"])
 async def get_my_profile(

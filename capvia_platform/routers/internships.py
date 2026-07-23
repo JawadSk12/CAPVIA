@@ -24,7 +24,7 @@ router = APIRouter(prefix="/internships", tags=["Internships"])
 @router.get("", summary="List & search internships (marketplace)")
 async def list_internships(
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
     search: Optional[str] = Query(None, description="Full-text search on title/description/location"),
     company_id: Optional[str] = Query(None, description="Filter by company ID"),
     status: Optional[str] = Query(None, description="DRAFT|PUBLISHED|CLOSED|ARCHIVED (HR/Admin only)"),

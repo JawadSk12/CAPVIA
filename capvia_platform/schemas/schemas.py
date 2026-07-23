@@ -248,6 +248,7 @@ class ResetPasswordRequest(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     token: str
+    email: Optional[str] = None
 
 
 # =========================================================================
