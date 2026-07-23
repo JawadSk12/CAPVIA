@@ -8,7 +8,8 @@ import {
   applicationApi, 
   rankingsApi, 
   dnaApi, 
-  integrityApi 
+  integrityApi,
+  recruitmentApi
 } from '../../../services/api';
 import ApplicationProgress from '../../../components/ApplicationProgress';
 import ProtectedRoute from '../../../components/ProtectedRoute';
@@ -65,6 +66,22 @@ function ApplicationDetailContent() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'dna' | 'technical' | 'behavioral' | 'timeline'>('dna');
   const [withdrawConfirm, setWithdrawConfirm] = useState(false);
+  const [atsTriggerLoading, setAtsTriggerLoading] = useState(false);
+  const [atsTriggered, setAtsTriggered] = useState(false);
+
+  const handleTriggerATS = async () => {
+    if (!id) return;
+    setAtsTriggerLoading(true);
+    try {
+      await recruitmentApi.triggerWebhook(id as string, 'ATS_PROCESSED');
+      setAtsTriggered(true);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['application-detail', id] }), 2000);
+    } catch (e: any) {
+      alert('Could not trigger ATS review. Please try again.');
+    } finally {
+      setAtsTriggerLoading(false);
+    }
+  };
 
   const handleStartSim = async () => {
     try {
@@ -360,6 +377,138 @@ function ApplicationDetailContent() {
               </span>
             </div>
           </div>
+
+          {/* ── Pipeline Action Banner ─────────────────────────── */}
+          {(() => {
+            const s = app.status;
+            const isActive = !app.is_terminal;
+
+            if (!isActive) return null;
+
+            // APPLIED — ATS pending / stalled
+            if (s === 'APPLIED' || s === 'ATS_PENDING') return (
+              <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,rgba(13,71,161,0.06),rgba(66,165,245,0.08))', border: '1px solid rgba(13,71,161,0.15)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(13,71,161,0.1)' }}>
+                  <RefreshCw className={`w-5 h-5 text-[#0D47A1] ${s === 'ATS_PENDING' ? 'animate-spin' : ''}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-black text-[#0D47A1]">AI Resume Screening {s === 'ATS_PENDING' ? 'In Progress…' : 'Pending'}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{s === 'ATS_PENDING' ? 'Your resume is being analyzed by our AI engine. This usually takes under 30 seconds.' : 'ATS review has not started yet. Click to trigger it now.'}</p>
+                </div>
+                {s === 'APPLIED' && (
+                  <button
+                    onClick={handleTriggerATS}
+                    disabled={atsTriggerLoading || atsTriggered}
+                    className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-px disabled:opacity-50"
+                    style={{ background: atsTriggered ? '#10B981' : 'var(--capvia-primary)', boxShadow: 'var(--shadow-primary)' }}
+                  >
+                    {atsTriggerLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
+                    {atsTriggered ? '✓ Triggered!' : atsTriggerLoading ? 'Triggering…' : '🤖 Trigger ATS Review'}
+                  </button>
+                )}
+              </div>
+            );
+
+            // ATS_COMPLETED — waiting for simulation invite
+            if (s === 'ATS_COMPLETED') return (
+              <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(16,185,129,0.1)' }}>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[12px] font-black text-emerald-700">✅ Resume Screened — ATS Score: {app.ats_score ?? 0}%</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Excellent! You passed the AI resume screening. Your coding simulation invitation is being prepared…</p>
+                </div>
+              </div>
+            );
+
+            // SIMULATION_INVITED or SIMULATION_IN_PROGRESS — big CTA
+            if (s === 'SIMULATION_INVITED' || s === 'SIMULATION_IN_PROGRESS' || s === 'SIMULATION_STARTED') return (
+              <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#1E1B4B,#312E81)', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 8px 32px rgba(99,102,241,0.2)' }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(167,139,250,0.15)' }}>
+                  <Code2 className="w-6 h-6 text-violet-300" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[13px] font-black text-white">🎯 Coding Assessment Ready</p>
+                  <p className="text-[11px] text-violet-300 mt-0.5">{s === 'SIMULATION_INVITED' ? 'You have been invited to take the coding challenge. Start when you are ready.' : 'Your assessment is in progress. Resume where you left off.'}</p>
+                </div>
+                <button
+                  onClick={handleStartSim}
+                  className="shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl text-[12px] font-black text-[#1E1B4B] transition-all hover:-translate-y-px hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg,#A78BFA,#7C3AED)', color: 'white', boxShadow: '0 4px 16px rgba(124,58,237,0.4)' }}
+                >
+                  {s === 'SIMULATION_INVITED' ? '🚀 Start Assessment' : '▶ Resume Assessment'}
+                </button>
+              </div>
+            );
+
+            // SIMULATION_COMPLETED — waiting for interview
+            if (s === 'SIMULATION_COMPLETED') return (
+              <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(16,185,129,0.1)' }}>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[12px] font-black text-emerald-700">✅ Simulation Complete — Score: {app.simulation_score ?? 0}%</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Great work! Your AI Interview invitation is being prepared…</p>
+                </div>
+              </div>
+            );
+
+            // INTERVIEW_INVITED or INTERVIEW_IN_PROGRESS — big CTA
+            if (s === 'INTERVIEW_INVITED' || s === 'INTERVIEW_IN_PROGRESS') return (
+              <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#4A044E,#701A75)', border: '1px solid rgba(232,121,249,0.3)', boxShadow: '0 8px 32px rgba(192,38,211,0.2)' }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(232,121,249,0.15)' }}>
+                  <Video className="w-6 h-6 text-fuchsia-300" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[13px] font-black text-white">🎤 AI Interview Kiosk Ready</p>
+                  <p className="text-[11px] text-fuchsia-300 mt-0.5">{s === 'INTERVIEW_INVITED' ? 'You have been invited to complete the AI Video Interview for this role. Find a quiet place and begin when ready.' : 'Your interview session is in progress. Continue where you left off.'}</p>
+                </div>
+                <button
+                  onClick={() => router.push(`/candidate/interview?role=${encodeURIComponent(app.vacancy_title || '')}`)}
+                  className="shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl text-[12px] font-black text-white transition-all hover:-translate-y-px hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg,#E879F9,#A21CAF)', boxShadow: '0 4px 16px rgba(192,38,211,0.4)' }}
+                >
+                  {s === 'INTERVIEW_INVITED' ? '🎥 Join AI Interview' : '▶ Resume Interview'}
+                </button>
+              </div>
+            );
+
+            // INTERVIEW_COMPLETED — generating report
+            if (s === 'INTERVIEW_COMPLETED') return (
+              <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(16,185,129,0.1)' }}>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[12px] font-black text-emerald-700">✅ AI Interview Complete!</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Generating your final DNA profile, ranking, and report… This may take a few seconds.</p>
+                </div>
+                <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin shrink-0" />
+              </div>
+            );
+
+            // EVALUATED — final result ready
+            if (s === 'EVALUATED' || s === 'EVALUATED_LOCAL_BASELINE') return (
+              <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,rgba(13,71,161,0.08),rgba(30,27,75,0.06))', border: '1px solid rgba(13,71,161,0.2)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-2xl">🏆</div>
+                <div className="flex-1">
+                  <p className="text-[12px] font-black text-[#0D47A1]">All Assessments Complete!</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Your DNA profile, ranking, and final report are ready. View them in the Capabilities DNA tab below.</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('dna')}
+                  className="shrink-0 px-4 py-2 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-px"
+                  style={{ background: 'var(--capvia-primary)', boxShadow: 'var(--shadow-primary)' }}
+                >
+                  View Results
+                </button>
+              </div>
+            );
+
+            return null;
+          })()}
 
           {/* Sub Navigation Tabs */}
           <div className="flex border-b border-slate-200 bg-white rounded-t-xl px-4 py-1.5 space-x-6">

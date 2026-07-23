@@ -128,9 +128,17 @@ async def process_ats_stage(application_id: uuid.UUID):
                 logger.warning(f"Failed to read local resume file {resume_url}: {str(e)}")
 
     if not resume_bytes:
-        logger.info(f"Using fallback mock PDF bytes for Application {application_id}")
-        resume_bytes = b"%PDF-1.4 mock resume content"
-        filename = "mock_resume.pdf"
+        logger.info(f"No resume bytes available for Application {application_id}. "
+                    f"Immediately firing ATS fallback to advance pipeline.")
+        # No resume available — advance pipeline immediately via fallback webhook
+        asyncio.create_task(
+            deferred_fallback_check(
+                application_id=application_id,
+                resume_uuid=uuid.uuid4(),  # synthetic UUID
+                vacancy_id=vacancy_id,
+            )
+        )
+        return
 
     # ── Phase 3: Sync JD to ATS Engine & upload resume ──────────────────────────
     resume_uuid: uuid.UUID = None
@@ -251,7 +259,10 @@ async def deferred_fallback_check(
         current_app = res.scalar_one_or_none()
         already_processed = (
             current_app is not None
-            and current_app.status != ApplicationStatus.ATS_PENDING
+            and current_app.status not in (
+                ApplicationStatus.APPLIED,
+                ApplicationStatus.ATS_PENDING,
+            )
         )
 
     if already_processed:

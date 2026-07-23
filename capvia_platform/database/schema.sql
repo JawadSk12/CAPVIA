@@ -28,7 +28,9 @@ CREATE TYPE application_status AS ENUM (
     'EVALUATED', 
     'EVALUATED_LOCAL_BASELINE', 
     'SHORTLISTED', 
-    'REJECTED'
+    'REJECTED',
+    'WITHDRAWN',
+    'HIRED'
 );
 
 -- =========================================================================

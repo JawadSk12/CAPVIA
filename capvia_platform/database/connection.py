@@ -2,6 +2,16 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from pathlib import Path
+
+# Load .env file variables manually to ensure CLI tools and migrations read them correctly
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.exists():
+    with open(_env_file) as f:
+        for line in f:
+            if "=" in line and not line.strip().startswith("#"):
+                key, val = line.strip().split("=", 1)
+                os.environ.setdefault(key.strip(), val.strip().strip("'\""))
 
 # Neon database URL from user request
 DEFAULT_DATABASE_URL = "postgresql://postgres:Almas%406060@localhost:5432/capvia"

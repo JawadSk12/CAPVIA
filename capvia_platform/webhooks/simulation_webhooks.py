@@ -102,8 +102,8 @@ async def handle_simulation_submitted_webhook(db: AsyncSession, data: dict):
     if risk in [RiskLevel.HIGH, RiskLevel.CRITICAL]:
         mapping.combined_risk_level = RiskLevel.HIGH
 
-    # 6. Evaluate threshold (Pass score >= 70% and not high cheating risk)
-    passed = (total_score >= 70.0) and (risk != RiskLevel.HIGH)
+    # 6. Evaluate threshold (Pass score >= 50% and not high cheating risk)
+    passed = (total_score >= 50.0) and (risk != RiskLevel.HIGH)
     from_status = app.status.value
 
     if passed:

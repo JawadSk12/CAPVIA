@@ -33,9 +33,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title = '' }) =
   const { user, logout } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const role     = user?.role || 'candidate';
+  useEffect(() => { setIsMounted(true); }, []);
+
+  const role     = isMounted ? (user?.role || 'candidate') : 'candidate';
   const rm       = ROLE_META[role] || ROLE_META.candidate;
   const RoleIcon = rm.icon;
 
@@ -44,12 +47,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title = '' }) =
     role === 'admin' ? '/admin/settings' :
     role === 'hr'    ? '/hr/settings'    : '/candidate/profile';
 
-  const initials = (user?.full_name || user?.email || 'U')
-    .split(' ')
-    .map((w: string) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const initials = isMounted
+    ? (user?.full_name || user?.email || 'U')
+        .split(' ')
+        .map((w: string) => w[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : 'U';
 
   /* Close dropdown on outside click */
   useEffect(() => {
@@ -202,14 +207,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title = '' }) =
             <div
               className="h-7 w-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0"
               style={{ background: 'linear-gradient(135deg, #0D47A1, #42A5F5)' }}
+              suppressHydrationWarning
             >
               {initials}
             </div>
 
             {/* Name — desktop */}
             <div className="hidden md:flex flex-col text-left leading-none">
-              <span className="text-[12px] font-semibold text-slate-800">
-                {user?.full_name?.split(' ')[0] || 'User'}
+              <span className="text-[12px] font-semibold text-slate-800" suppressHydrationWarning>
+                {isMounted ? (user?.full_name?.split(' ')[0] || 'User') : 'User'}
               </span>
             </div>
 

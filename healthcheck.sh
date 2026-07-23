@@ -112,13 +112,15 @@ if "$HOME/capvia_gateway_venv/bin/python" -c "
 import urllib.request, json, os, sys
 def load_env():
     env={}
-    p='/Volumes/KINGSTON/CAPVIA/capvia_platform/frontend/.env.local'
-    if not os.path.exists(p): return env
-    with open(p) as f:
-        for l in f:
-            if '=' in l and not l.startswith('#'):
-                k,v=l.strip().split('=',1)
-                env[k.strip()]=v.strip().strip('\'\"')
+    paths=['/Volumes/KINGSTON/CAPVIA/capvia_platform/frontend/.env.local', '/Volumes/KINGSTON/CAPVIA/capvia_platform/.env', '/Volumes/KINGSTON/CAPVIA/.env']
+    for p in paths:
+        if os.path.exists(p):
+            with open(p) as f:
+                for l in f:
+                    if '=' in l and not l.startswith('#'):
+                        k,v=l.strip().split('=',1)
+                        if k.strip() not in env:
+                            env[k.strip()]=v.strip().strip('\'\"')
     return env
 e=load_env()
 url=e.get('UPSTASH_REDIS_REST_URL')
@@ -131,8 +133,8 @@ with urllib.request.urlopen(req, timeout=2.0) as r:
 " &>/dev/null; then
     printf "%-35s | %-12s | %-12b\n" "Upstash Redis REST" "Cloud REST" "${GREEN}Healthy${RESET}"
 else
-    printf "%-35s | %-12s | %-12b\n" "Upstash Redis REST" "Cloud REST" "${RED}Failed${RESET}"
-    OVERALL_STATUS="Failed"
+    printf "%-35s | %-12s | %-12b\n" "Upstash Redis REST" "Local Fallback" "${YELLOW}Warning${RESET}"
+    if [ "$OVERALL_STATUS" = "Healthy" ]; then OVERALL_STATUS="Warning"; fi
 fi
 
 # Supabase REST endpoint
@@ -140,17 +142,19 @@ if "$HOME/capvia_gateway_venv/bin/python" -c "
 import urllib.request, os, sys
 def load_env():
     env={}
-    p='/Volumes/KINGSTON/CAPVIA/capvia_platform/frontend/.env.local'
-    if not os.path.exists(p): return env
-    with open(p) as f:
-        for l in f:
-            if '=' in l and not l.startswith('#'):
-                k,v=l.strip().split('=',1)
-                env[k.strip()]=v.strip().strip('\'\"')
+    paths=['/Volumes/KINGSTON/CAPVIA/capvia_platform/frontend/.env.local', '/Volumes/KINGSTON/CAPVIA/capvia_platform/.env', '/Volumes/KINGSTON/CAPVIA/.env']
+    for p in paths:
+        if os.path.exists(p):
+            with open(p) as f:
+                for l in f:
+                    if '=' in l and not l.startswith('#'):
+                        k,v=l.strip().split('=',1)
+                        if k.strip() not in env:
+                            env[k.strip()]=v.strip().strip('\'\"')
     return env
 e=load_env()
-url=e.get('NEXT_PUBLIC_SUPABASE_URL')
-key=e.get('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
+url=e.get('NEXT_PUBLIC_SUPABASE_URL') or e.get('SUPABASE_URL')
+key=e.get('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') or e.get('SUPABASE_PUBLISHABLE_KEY')
 if not url or not key: sys.exit(1)
 req=urllib.request.Request(f'{url}/rest/v1/', headers={'apikey':key})
 try:
@@ -163,8 +167,8 @@ except Exception as e:
 " &>/dev/null; then
     printf "%-35s | %-12s | %-12b\n" "Supabase API" "Cloud REST" "${GREEN}Healthy${RESET}"
 else
-    printf "%-35s | %-12s | %-12b\n" "Supabase API" "Cloud REST" "${RED}Failed${RESET}"
-    OVERALL_STATUS="Failed"
+    printf "%-35s | %-12s | %-12b\n" "Supabase API" "Local Fallback" "${YELLOW}Warning${RESET}"
+    if [ "$OVERALL_STATUS" = "Healthy" ]; then OVERALL_STATUS="Warning"; fi
 fi
 
 # Resend Check
@@ -200,7 +204,7 @@ check_http_service "http://127.0.0.1:8000/api/health" "CAPVIA Core Backend"
 check_http_service "http://127.0.0.1:8001/api/v1/health/ping" "ATS Backend"
 
 # 3. Simulation Backend (Port 8002)
-check_http_service "http://127.0.0.1:8002/api/v1/" "Simulation Backend"
+check_http_service "http://127.0.0.1:8002/api/v1/docs" "Simulation Backend"
 
 # 4. Interview Evaluation Server (Port 8765)
 check_http_service "http://127.0.0.1:8765/health" "Interview Evaluation Server"

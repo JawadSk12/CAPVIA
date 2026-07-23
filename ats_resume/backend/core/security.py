@@ -21,7 +21,10 @@ import io
 import re
 from pathlib import Path
 
-import magic
+try:
+    import magic
+except Exception:
+    magic = None
 from fastapi import HTTPException, UploadFile, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -147,8 +150,22 @@ async def validate_resume_file(file: UploadFile) -> bytes:
         )
 
     # ── 4. Magic bytes check ──────────────────────────────────────────────
-    # Read first 2048 bytes for magic detection (faster than full file)
-    detected_mime = magic.from_buffer(file_bytes[:2048], mime=True)
+    # Read first 2048 bytes for magic detection
+    if magic:
+        try:
+            detected_mime = magic.from_buffer(file_bytes[:2048], mime=True)
+        except Exception:
+            detected_mime = None
+    else:
+        detected_mime = None
+
+    if not detected_mime:
+        if file_bytes.startswith(b"%PDF"):
+            detected_mime = "application/pdf"
+        elif file_bytes.startswith(b"PK\x03\x04"):
+            detected_mime = "application/zip"
+        else:
+            detected_mime = content_type
 
     if detected_mime not in ALLOWED_MAGIC_MIMES:
         raise HTTPException(

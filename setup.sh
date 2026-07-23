@@ -186,8 +186,8 @@ echo -e "${GREEN}[OK] Local upload folders verified.${RESET}"
 echo -e "\n${BLUE}[8/8] Running Database Migrations & Seeds...${RESET}"
 
 # Central Gateway Migrations
-echo "Running Central Gateway database migrations (Neon)..."
-(cd capvia_platform && DATABASE_URL="postgresql+asyncpg://neondb_owner:npg_tLEN1ylR7PGq@ep-bitter-sea-ao65dvct-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?ssl=require" "$HOME/capvia_gateway_venv/bin/python" drop_tables.py)
+echo "Running Central Gateway database migrations..."
+(cd capvia_platform && "$HOME/capvia_gateway_venv/bin/python" drop_tables.py)
 (cd capvia_platform && "$HOME/capvia_gateway_venv/bin/alembic" upgrade head)
 
 # Local ATS Database Reset

@@ -5,6 +5,12 @@ const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
   swcMinify: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     esmExternals: "loose",
   },

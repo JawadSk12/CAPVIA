@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -145,20 +145,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  const role = user?.role || 'candidate';
+  useEffect(() => { setIsMounted(true); }, []);
+
+  // Use stable values before mount to avoid hydration mismatch
+  const role = isMounted ? (user?.role || 'candidate') : 'candidate';
   const groups =
     role === 'admin' ? adminGroups :
     role === 'hr'    ? hrGroups    :
                        candidateGroups;
 
   const meta = ROLE_META[role] || ROLE_META.candidate;
-  const initials = (user?.full_name || user?.email || 'U')
-    .split(' ')
-    .map((w: string) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  // Compute initials — empty string before mount so SSR matches client
+  const initials = isMounted
+    ? (user?.full_name || user?.email || 'U')
+        .split(' ')
+        .map((w: string) => w[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : 'U';
 
   const sidebarWidth = collapsed ? 'w-[64px]' : 'w-[240px]';
 
@@ -258,7 +265,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           )}
 
           {/* User card */}
-          {!collapsed && user && (
+          {!collapsed && isMounted && user && (
             <div
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl mt-1"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -288,7 +295,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           )}
 
           {/* Collapsed avatar */}
-          {collapsed && user && (
+          {collapsed && isMounted && user && (
             <div className="flex justify-center mt-2">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black"

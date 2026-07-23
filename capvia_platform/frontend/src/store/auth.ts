@@ -1,4 +1,13 @@
 import { create } from 'zustand';
+import { useEffect, useState } from 'react';
+
+/** Returns true only after the component has mounted on the client.
+ *  Use this to suppress SSR/hydration mismatches for browser-only content. */
+export function useHasMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted;
+}
 
 interface AuthUser {
   id: string;

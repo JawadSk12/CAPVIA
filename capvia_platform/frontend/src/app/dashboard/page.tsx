@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useLayoutEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { UnifiedLayout } from "@/features/shared/UnifiedLayout";
@@ -11,6 +11,13 @@ import {
   Circle, CheckCircle2, Clock,
 } from "lucide-react";
 import Link from "next/link";
+
+// Safe client-only hook — returns false on server / first paint, true after mount
+const useIsMounted = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted;
+};
 
 /* ── Status config ────────────────────────────────────────── */
 const STATUS_CFG: Record<string, {
@@ -60,7 +67,7 @@ function ScoreRing({ score, size = 128 }: { score: number; size?: number }) {
 
 /* ── Skeleton ─────────────────────────────────────────────── */
 function Skel({ className }: { className?: string }) {
-  return <div className={`skeleton rounded-lg ${className ?? ''}`} />;
+  return <span className={`skeleton rounded-lg inline-block ${className ?? ''}`} />;
 }
 
 export default function CandidateDashboard() {
@@ -70,9 +77,11 @@ export default function CandidateDashboard() {
   const [applications,    setApplications]    = useState<any[]>([]);
   const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
   const [loading,         setLoading]         = useState(true);
-  const [greeting,        setGreeting]        = useState("Welcome back");
+  const [greeting,        setGreeting]        = useState("");
+  const [isMounted,       setIsMounted]       = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     initialize();
     const h = new Date().getHours();
     if (h < 12)      setGreeting("Good morning");
@@ -106,9 +115,9 @@ export default function CandidateDashboard() {
   };
 
   /* Compute DNA score as avg ats_score */
-  const dnaScore = applications.length
+  const dnaScore = isMounted ? (applications.length
     ? Math.round(applications.map(a => a.ats_score || 0).reduce((a, b) => a + b, 0) / applications.length) || 75
-    : 0;
+    : 0) : 0;
 
   const stats = [
     {
@@ -137,7 +146,28 @@ export default function CandidateDashboard() {
     },
   ];
 
-  const firstName = user?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'there';
+  // Only derive user-specific values after mount to avoid SSR mismatch
+  const firstName = isMounted
+    ? (user?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'there')
+    : '';
+
+  // Suppress full render until client has hydrated to avoid subtree mismatch
+  if (!isMounted) {
+    return (
+      <UnifiedLayout title="Dashboard">
+        <div className="space-y-8 pb-8">
+          {/* Skeleton placeholders during hydration */}
+          <div className="rounded-2xl px-7 py-6" style={{ background: "linear-gradient(135deg, #0D47A1 0%, #0B1D3A 100%)", height: 96 }} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-4 rounded-2xl" style={{ background: "#08152E", height: 280 }} />
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[1,2,3].map(i => <div key={i} className="kpi-card" style={{ height: 120 }} />)}
+            </div>
+          </div>
+        </div>
+      </UnifiedLayout>
+    );
+  }
 
   return (
     <UnifiedLayout title="Dashboard">
@@ -171,11 +201,11 @@ export default function CandidateDashboard() {
           </div>
 
           <div className="relative z-10">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-white/50 mb-1">
-              {greeting},
+            <p className="text-[11px] font-bold uppercase tracking-widest text-white/50 mb-1" suppressHydrationWarning>
+              {isMounted ? `${greeting},` : ""}
             </p>
-            <h1 className="text-2xl md:text-[28px] font-black text-white font-outfit tracking-tight leading-tight">
-              {firstName}
+            <h1 className="text-2xl md:text-[28px] font-black text-white font-outfit tracking-tight leading-tight" suppressHydrationWarning>
+              {isMounted ? firstName : ""}
             </h1>
             <p className="text-sm text-white/60 mt-1 font-medium">
               Your verified career profile is active.
@@ -267,9 +297,9 @@ export default function CandidateDashboard() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
                     {s.label}
                   </p>
-                  <p className="text-[32px] font-black text-slate-900 font-outfit leading-none">
+                  <div className="text-[32px] font-black text-slate-900 font-outfit leading-none">
                     {loading ? <Skel className="h-8 w-12" /> : s.value}
-                  </p>
+                  </div>
                   <p className="text-[11px] text-slate-400 font-medium mt-1.5">{s.sub}</p>
                 </div>
               );
@@ -402,8 +432,8 @@ export default function CandidateDashboard() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-400 font-medium">
-                              🏢 {app.internship?.company_name || "Partner"} · Applied {new Date(app.created_at).toLocaleDateString()}
+                            <p className="text-[11px] text-slate-400 font-medium" suppressHydrationWarning>
+                              🏢 {app.internship?.company_name || "Partner"} · Applied {isMounted && app.created_at ? new Date(app.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                             </p>
                           </div>
                         </div>
