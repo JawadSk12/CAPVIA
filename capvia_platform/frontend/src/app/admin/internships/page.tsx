@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useMemo } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { internshipApi } from '@/services/api';
+import { internshipApi } from '../../../services/api';
 import {
   Search, Briefcase, Users, Eye, Archive, ToggleLeft, Copy,
   Calendar, MapPin, ChevronLeft, ChevronRight, SlidersHorizontal,

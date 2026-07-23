@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useMemo } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/services/api';
+import { apiClient } from '../../../services/api';
 import {
   Search, Filter, UserCheck, UserX, Edit2, Trash2, KeyRound,
   Download, ChevronLeft, ChevronRight, User, Shield, Building,

@@ -70,11 +70,13 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = Field(default="ai_simulation", env="POSTGRES_DB")
     POSTGRES_PORT: int = Field(default=5432, env="POSTGRES_PORT")
     
-    SQLALCHEMY_DATABASE_URI: Optional[str] = None
+    SQLALCHEMY_DATABASE_URI: Optional[str] = Field(default=None, env="DATABASE_URL")
     
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: dict) -> str:
         if isinstance(v, str):
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql://", 1)
             return v
         
         # Safely encode password to support special characters like @

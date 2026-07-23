@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import {
   Bell, AlertTriangle, CheckCircle2, Info, XCircle, X,
   Zap, Server, Shield, Database,

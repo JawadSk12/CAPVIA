@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useMemo } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import { useQuery } from '@tanstack/react-query';
-import { companyApi, internshipApi, recruitmentApi } from '@/services/api';
+import { companyApi, internshipApi, recruitmentApi } from '../../../services/api';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,

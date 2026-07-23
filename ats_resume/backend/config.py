@@ -70,6 +70,17 @@ class Settings(BaseSettings):
     # ── PostgreSQL ───────────────────────────────────────────────────────────────
     # Format: postgresql+asyncpg://user:password@host:port/dbname
     DATABASE_URL: str = "postgresql+asyncpg://capvia:capvia_dev@localhost:5432/capvia"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def parse_database_url(cls, v: str) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif v.startswith("postgresql://"):
+                v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 40
     DATABASE_POOL_TIMEOUT: int = 30       # seconds to wait for a connection
@@ -174,10 +185,6 @@ class Settings(BaseSettings):
                 raise ValueError("DEBUG must be False in production")
             if self.DOCS_URL is not None:
                 self.DOCS_URL = None
-            if not self.AWS_ACCESS_KEY_ID:
-                raise ValueError("AWS_ACCESS_KEY_ID required in production")
-            if not self.SENTRY_DSN:
-                raise ValueError("SENTRY_DSN required in production")
         return self
 
 

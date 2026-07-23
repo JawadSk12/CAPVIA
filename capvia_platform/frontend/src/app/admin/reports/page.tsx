@@ -1,8 +1,8 @@
 'use client';
 import React, { useMemo } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import { useQuery } from '@tanstack/react-query';
-import { reportsApi } from '@/services/api';
+import { reportsApi } from '../../../services/api';
 import { FileText, Download, BarChart2, Clock, CheckCircle2, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 

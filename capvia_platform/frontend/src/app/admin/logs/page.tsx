@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import {
   ScrollText, User, Shield, Settings, AlertTriangle, LogIn,
   CheckCircle2, Info, ChevronDown, Search, Filter,

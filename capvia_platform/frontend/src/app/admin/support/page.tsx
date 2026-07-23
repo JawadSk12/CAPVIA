@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import { HelpCircle, MessageSquare, FileText, ExternalLink, ChevronRight, Mail, Book } from 'lucide-react';
 
 const FAQS = [

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import {
   Settings, Globe, Mail, Shield, HardDrive, KeyRound, ToggleLeft,
   ToggleRight, Save, Eye, EyeOff, CheckCircle2,

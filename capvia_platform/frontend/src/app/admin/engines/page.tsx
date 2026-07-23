@@ -1,8 +1,8 @@
 'use client';
 import React, { useState } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/services/api';
+import { apiClient } from '../../../services/api';
 import {
   Cpu, Activity, Clock, AlertTriangle, CheckCircle2, RefreshCw,
   BarChart2, Zap, TrendingUp,

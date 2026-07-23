@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
-import { apiClient } from '@/services/api';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
+import { apiClient } from '../../../services/api';
 import {
   Server, Database, Mail, Cpu, HardDrive, Globe, Zap, Shield,
   CheckCircle2, AlertTriangle, XCircle, RefreshCw, Clock, Activity,

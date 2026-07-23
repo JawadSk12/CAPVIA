@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useMemo } from 'react';
-import UnifiedLayout from '@/features/shared/UnifiedLayout';
+import UnifiedLayout from '../../../features/shared/UnifiedLayout';
 import { useQuery } from '@tanstack/react-query';
-import { companyApi } from '@/services/api';
+import { companyApi } from '../../../services/api';
 import {
   Search, Building, Globe, MapPin, Users, Briefcase, CheckCircle2,
   XCircle, MoreHorizontal, ExternalLink, BarChart2, Shield,
