@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     # Redis (For Celery/Tasks/Rate Limiting)
     REDIS_URL: Optional[str] = None
     
+    def get_redis_url(self) -> str:
+        url = (self.REDIS_URL or "").strip()
+        if any(url.startswith(scheme) for scheme in ("redis://", "rediss://", "unix://")):
+            return url
+        return "redis://localhost:6379/0"
+    
     # Security
     SECRET_KEY: str = "supersecretkey_change_in_production"
     ALGORITHM: str = "HS256"

@@ -30,8 +30,11 @@ async def get_redis(request: Request) -> AsyncGenerator[aioredis.Redis, None]:
     Dependency yielding a Redis client connection.
     """
     if not hasattr(request.app.state, "redis_pool"):
-        url = settings.REDIS_URL or "redis://localhost:6379/0"
-        request.app.state.redis_pool = aioredis.ConnectionPool.from_url(url)
+        url = settings.get_redis_url()
+        try:
+            request.app.state.redis_pool = aioredis.ConnectionPool.from_url(url)
+        except Exception:
+            request.app.state.redis_pool = aioredis.ConnectionPool.from_url("redis://localhost:6379/0")
     
     client = aioredis.Redis(connection_pool=request.app.state.redis_pool)
     try:

@@ -16,13 +16,22 @@ async def lifespan(app: FastAPI):
     Manages startup and shutdown events for the application resources.
     """
     # Startup: Initialize Redis connection pool
-    url = settings.REDIS_URL or "redis://localhost:6379/0"
-    app.state.redis_pool = aioredis.ConnectionPool.from_url(url)
+    url = settings.get_redis_url()
+    try:
+        app.state.redis_pool = aioredis.ConnectionPool.from_url(url)
+    except Exception as err:
+        import logging
+        logging.getLogger("uvicorn").warning(f"Failed to initialize Redis pool with URL '{url}': {err}. Using fallback.")
+        app.state.redis_pool = aioredis.ConnectionPool.from_url("redis://localhost:6379/0")
     
     yield
     
     # Shutdown: Close Redis pool connections
-    await app.state.redis_pool.disconnect()
+    if hasattr(app.state, "redis_pool") and app.state.redis_pool:
+        try:
+            await app.state.redis_pool.disconnect()
+        except Exception:
+            pass
 
 def create_app() -> FastAPI:
     app = FastAPI(

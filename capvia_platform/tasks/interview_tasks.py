@@ -19,13 +19,12 @@ from capvia_platform.webhooks.interview_webhooks import handle_interview_evaluat
 logger = logging.getLogger("interview_tasks")
 
 async def _get_redis() -> Optional[aioredis.Redis]:
-    if settings.REDIS_URL:
-        try:
-            pool = aioredis.ConnectionPool.from_url(settings.REDIS_URL, decode_responses=True)
-            return aioredis.Redis(connection_pool=pool)
-        except Exception as e:
-            logger.warning(f"Failed to connect to Redis: {str(e)}")
-    return None
+    try:
+        pool = aioredis.ConnectionPool.from_url(settings.get_redis_url(), decode_responses=True)
+        return aioredis.Redis(connection_pool=pool)
+    except Exception as e:
+        logger.warning(f"Failed to connect to Redis: {str(e)}")
+        return None
 
 async def process_interview_evaluation_task(
     application_id: uuid.UUID,

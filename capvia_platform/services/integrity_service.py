@@ -73,13 +73,12 @@ CALIBRATION_TTL_SECONDS = 86400  # 24 hours
 # Helper: Redis connection
 # =========================================================================
 async def _get_redis() -> Optional[aioredis.Redis]:
-    if settings.REDIS_URL:
-        try:
-            pool = aioredis.ConnectionPool.from_url(settings.REDIS_URL, decode_responses=True)
-            return aioredis.Redis(connection_pool=pool)
-        except Exception as exc:
-            logger.warning(f"Integrity Engine: Redis unavailable — {exc}")
-    return None
+    try:
+        pool = aioredis.ConnectionPool.from_url(settings.get_redis_url(), decode_responses=True)
+        return aioredis.Redis(connection_pool=pool)
+    except Exception as exc:
+        logger.warning(f"Integrity Engine: Redis unavailable — {exc}")
+        return None
 
 
 # =========================================================================

@@ -65,15 +65,14 @@ class ATSConnector:
     async def _get_redis(self) -> Optional[aioredis.Redis]:
         if self._redis_client is not None:
             return self._redis_client
-        if settings.REDIS_URL:
-            try:
-                # Setup a clean connection pool
-                pool = aioredis.ConnectionPool.from_url(settings.REDIS_URL, decode_responses=True)
-                self._redis_client = aioredis.Redis(connection_pool=pool)
-                return self._redis_client
-            except Exception as e:
-                logger.warning(f"Failed to connect to Redis. Caching will fallback to local memory. Error: {str(e)}")
-        return None
+        try:
+            # Setup a clean connection pool
+            pool = aioredis.ConnectionPool.from_url(settings.get_redis_url(), decode_responses=True)
+            self._redis_client = aioredis.Redis(connection_pool=pool)
+            return self._redis_client
+        except Exception as e:
+            logger.warning(f"Failed to connect to Redis. Caching will fallback to local memory. Error: {str(e)}")
+            return None
 
     def _get_auth_headers(self) -> dict:
         token = create_system_jwt(audience="ATS_ENGINE", expires_in_sec=300)

@@ -31,13 +31,12 @@ router = APIRouter()
 interview_repo = InterviewRepository()
 
 async def _get_redis() -> Optional[aioredis.Redis]:
-    if settings.REDIS_URL:
-        try:
-            pool = aioredis.ConnectionPool.from_url(settings.REDIS_URL, decode_responses=True)
-            return aioredis.Redis(connection_pool=pool)
-        except Exception as e:
-            logger.warning(f"Failed to connect to Redis in router: {str(e)}")
-    return None
+    try:
+        pool = aioredis.ConnectionPool.from_url(settings.get_redis_url(), decode_responses=True)
+        return aioredis.Redis(connection_pool=pool)
+    except Exception as e:
+        logger.warning(f"Failed to connect to Redis in router: {str(e)}")
+        return None
 
 def _generate_default_questions(job_role: str, skills: List[str]) -> List[str]:
     skill_str = skills[0] if skills else job_role
