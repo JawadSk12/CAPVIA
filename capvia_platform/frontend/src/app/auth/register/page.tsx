@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '../../../services/api';
 import {
-  Mail, Lock, User, AlertCircle, Phone, Building,
+  Mail, Lock, User, AlertCircle, Phone, Building, Key, ShieldCheck,
   Eye, EyeOff, BrainCircuit, ArrowRight, CheckCircle2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -73,6 +73,7 @@ function FieldInput({
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [mounted,         setMounted]         = useState(false);
   const [fullName,        setFullName]         = useState('');
@@ -82,11 +83,18 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword]  = useState('');
   const [role,            setRole]             = useState<'candidate' | 'hr'>('candidate');
   const [companyName,     setCompanyName]      = useState('');
+  const [hrCode,          setHrCode]           = useState('');
   const [agreedToTerms,   setAgreedToTerms]    = useState(false);
   const [error,           setError]            = useState<string | null>(null);
   const [loading,         setLoading]          = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { 
+    setMounted(true); 
+    const paramEmail = searchParams?.get('email');
+    const paramName = searchParams?.get('name');
+    if (paramEmail) setEmail(paramEmail);
+    if (paramName) setFullName(paramName);
+  }, [searchParams]);
 
   const getPasswordStrength = (pwd: string) => {
     let score = 0;
@@ -105,6 +113,11 @@ export default function RegisterPage() {
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
+    }
+    if (role === 'hr' && !hrCode.trim()) {
+      setError('HR Access Code is required to register as HR. Please contact your administrator.');
       setLoading(false);
       return;
     }
@@ -129,13 +142,13 @@ export default function RegisterPage() {
         email, password,
         full_name: fullName,
         role,
-        ...(role === 'hr' ? { company_name: companyName } : {}),
+        ...(role === 'hr' ? { company_name: companyName, hr_code: hrCode } : {}),
         phone,
       });
       const verifyToken = data.simulated_token || '';
       router.push(`/auth/verify-email?token=${verifyToken}&email=${encodeURIComponent(email)}`);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.error?.message || 'Registration failed. Please check your details and try again.');
     } finally {
       setLoading(false);
     }
@@ -307,11 +320,23 @@ export default function RegisterPage() {
             />
 
             {role === 'hr' && (
-              <FieldInput
-                id="company" label="Company Name" icon={Building}
-                placeholder="CAPVIA Technologies" value={companyName}
-                onChange={setCompanyName} required
-              />
+              <>
+                <FieldInput
+                  id="company" label="Company Name" icon={Building}
+                  placeholder="CAPVIA Technologies" value={companyName}
+                  onChange={setCompanyName} required
+                />
+                <FieldInput
+                  id="hrCode" label="Admin HR Security Code" type="password" icon={Key}
+                  placeholder="Enter HR access code from admin" value={hrCode}
+                  onChange={setHrCode} required
+                  extra={
+                    <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Admin Code Required
+                    </span>
+                  }
+                />
+              </>
             )}
 
             {/* Password */}

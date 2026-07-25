@@ -223,6 +223,8 @@ class UserRegisterRequest(BaseModel):
     role: Optional[str] = "candidate"
     company_name: Optional[str] = None
     phone: Optional[str] = None
+    hr_code: Optional[str] = None
+
 
 
 class UserLoginRequest(BaseModel):

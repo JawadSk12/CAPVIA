@@ -69,21 +69,21 @@ export default function LoginPage() {
         firebaseUser = userCredential.user;
         firebaseToken = await firebaseUser.getIdToken();
       } catch (fbErr: any) {
-        // If Firebase user does not exist or credentials fail
-        if (fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/wrong-password') {
-          setError('Invalid email or password.');
-          setLoading(false);
+        if (fbErr.code === 'auth/user-not-found') {
+          setError('No account found for this email. Redirecting to registration...');
+          setTimeout(() => {
+            router.push(`/auth/register?email=${encodeURIComponent(email)}`);
+          }, 1200);
           return;
-        } else if (fbErr.code === 'auth/user-not-found') {
-          setError('No account found with this email.');
+        } else if (fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/wrong-password') {
+          setError('Invalid password or credentials.');
           setLoading(false);
           return;
         } else if (fbErr.code === 'auth/too-many-requests') {
-          setError('Access to this account has been temporarily disabled due to many failed attempts.');
+          setError('Access temporarily locked due to multiple failed attempts.');
           setLoading(false);
           return;
         }
-        // Fallback: Continue if Firebase isn't configured for this specific email yet
       }
 
       // 2. Authenticate against CAPVIA Backend Gateway
@@ -95,10 +95,9 @@ export default function LoginPage() {
           full_name: data.full_name || firebaseUser?.displayName || email.split('@')[0],
           role: data.role || 'candidate',
         });
-        router.push('/dashboard');
+        router.push(data.role === 'hr' ? '/hr/dashboard' : '/dashboard');
         return;
       } catch (backendErr: any) {
-        // If backend is offline or backend API failed, but Firebase authenticated successfully:
         if (firebaseUser && firebaseToken) {
           login(firebaseToken, firebaseToken, {
             id: firebaseUser.uid,
@@ -109,7 +108,16 @@ export default function LoginPage() {
           router.push('/dashboard');
           return;
         }
-        setError(backendErr.response?.data?.error?.message || 'Invalid email or password.');
+        
+        const errMsg = backendErr.response?.data?.error?.message || '';
+        if (errMsg.toLowerCase().includes('not found') || errMsg.toLowerCase().includes('incorrect email')) {
+          setError('No account found for this email. Redirecting to sign-up to complete your profile setup...');
+          setTimeout(() => {
+            router.push(`/auth/register?email=${encodeURIComponent(email)}`);
+          }, 1500);
+          return;
+        }
+        setError(errMsg || 'Invalid email or password.');
       }
     } catch (err: any) {
       setError('An error occurred during login. Please try again.');
@@ -125,23 +133,33 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       const firebaseToken = await user.getIdToken();
+      const userEmail = user.email || '';
+      const userName = user.displayName || 'User';
 
-      login(firebaseToken, firebaseToken, {
-        id: user.uid,
-        email: user.email || '',
-        full_name: user.displayName || 'Google User',
-        role: 'candidate',
-      });
-
-      router.push('/dashboard');
+      // Check if user already exists in backend, otherwise redirect to profile signup
+      try {
+        const data = await authApi.login({ email: userEmail, password: user.uid });
+        login(data.access_token, data.refresh_token, {
+          id: data.user_id || user.uid,
+          email: userEmail,
+          full_name: data.full_name || userName,
+          role: data.role || 'candidate',
+        });
+        router.push(data.role === 'hr' ? '/hr/dashboard' : '/dashboard');
+      } catch {
+        // User does not exist in CAPVIA backend -> Redirect to Sign-Up profile completion
+        setError('Google sign-in successful! Redirecting to complete your profile setup...');
+        setTimeout(() => {
+          router.push(`/auth/register?email=${encodeURIComponent(userEmail)}&name=${encodeURIComponent(userName)}`);
+        }, 1200);
+      }
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') {
-        // User closed the popup, silent return
         setLoading(false);
         return;
       }
       if (err.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorized in Firebase Console. Please add localhost to Authorized Domains.');
+        setError('This domain is not authorized in Firebase Console. Please add localhost/capvia.in to Authorized Domains.');
       } else {
         setError(err.message || 'Google Sign-In failed. Please try again.');
       }

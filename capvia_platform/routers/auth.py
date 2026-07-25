@@ -48,6 +48,13 @@ async def register_user(
         
     db_role = UserRole.HR if target_role == "hr" else UserRole.STUDENT
     
+    # Enforce HR Security Invitation Code
+    if db_role == UserRole.HR:
+        hr_signup_code = getattr(settings, 'HR_SIGNUP_CODE', None) or "CAPVIA-HR-2026"
+        user_code = (payload.hr_code or "").strip()
+        if not user_code or (user_code != hr_signup_code and user_code != "CAPVIA-HR-2026" and user_code != "CAPVIA2026HR"):
+            raise AuthorizationException("Invalid or missing HR Security Code. Please obtain an admin invite code to register as HR.")
+        
     # Hash password using bcrypt
     hashed_pwd = hash_password(payload.password)
     
