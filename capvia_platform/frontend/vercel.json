@@ -8,7 +8,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://*.vercel-insights.com; worker-src blob: 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://*.sentry.io; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://saving-sawfish-133622.upstash.io https://api.capvia.in https://*.sentry.io https://*.vercel-insights.com http://localhost:* ws://localhost:* wss://localhost:*; frame-src 'self'; media-src 'self' blob: https://*.supabase.co;"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io https://*.vercel-insights.com https://apis.google.com https://*.firebaseapp.com; worker-src blob: 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://*.sentry.io https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://saving-sawfish-133622.upstash.io https://api.capvia.in https://*.sentry.io https://*.vercel-insights.com https://*.firebaseapp.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com http://localhost:* ws://localhost:* wss://localhost:*; frame-src 'self' https://*.firebaseapp.com https://capvia-bf62c.firebaseapp.com https://*.google.com; media-src 'self' blob: https://*.supabase.co;"
         },
         {
           "key": "X-Frame-Options",

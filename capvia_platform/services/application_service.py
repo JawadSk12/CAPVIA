@@ -633,3 +633,254 @@ class ApplicationService:
         )
         result = await session.execute(stmt)
         return {"success": True, "marked_count": result.rowcount}
+
+    # ------------------------------------------------------------------
+    # Pipeline: Start Simulation
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def start_simulation(
+        session: AsyncSession, application_id: uuid.UUID, current_user: User
+    ) -> dict:
+        """
+        Starts the simulation test for a candidate's application.
+        Uses internship role, skills, responsibilities to generate contextual questions.
+        Returns attempt_id for the simulation UI redirect.
+        """
+        from sqlalchemy.orm import selectinload
+        stmt = (
+            select(Application)
+            .where(Application.id == application_id)
+            .options(
+                selectinload(Application.vacancy).selectinload(Internship.company)
+            )
+        )
+        res = await session.execute(stmt)
+        app = res.scalar_one_or_none()
+
+        if not app or app.deleted_at:
+            raise ResourceNotFoundException("Application", str(application_id))
+
+        if current_user.role == UserRole.STUDENT and app.candidate_id != current_user.id:
+            raise AuthorizationException("You can only start your own simulation.")
+
+        # Allow starting from ATS_COMPLETED or SIMULATION_INVITED or SIMULATION_IN_PROGRESS
+        allowed_statuses = {
+            ApplicationStatus.ATS_COMPLETED,
+            ApplicationStatus.SIMULATION_INVITED,
+            ApplicationStatus.SIMULATION_IN_PROGRESS,
+            ApplicationStatus.APPLIED,  # Fallback if ATS was skipped
+        }
+        if app.status not in allowed_statuses:
+            raise BaseAPIException(
+                f"Cannot start simulation from status '{app.status.value}'. "
+                "ATS screening must complete first.",
+                status_code=400, code="INVALID_STATE"
+            )
+
+        internship = app.vacancy
+        if not internship:
+            raise BaseAPIException("Internship data not found for this application.", status_code=500)
+
+        from capvia_platform.services.simulation_connector import simulation_connector
+        from capvia_platform.services.services import MappingService
+
+        # Fetch or create all three mapping records
+        vacancy_map = await MappingService.get_or_create_vacancy_mapping(session, internship.id)
+        cand_map = await MappingService.get_or_create_candidate_mapping(session, current_user.id)
+        app_map = await MappingService.get_or_create_application_mapping(session, application_id)
+
+        sim_internship_id = vacancy_map.simulation_internship_id
+        sim_candidate_id = cand_map.simulation_candidate_id
+        sim_application_id = app_map.simulation_application_id
+
+        # Register internship in simulation engine if not already done
+        if sim_internship_id is None:
+            try:
+                sim_internship_id = await simulation_connector.register_internship(
+                    title=internship.title,
+                    company_name=internship.company.name if internship.company else "CAPVIA Partner",
+                    description=internship.description or "",
+                    required_skills=internship.required_skills or [],
+                    technologies=internship.technologies or [],
+                )
+                vacancy_map.simulation_internship_id = sim_internship_id
+                await session.flush()
+            except Exception as e:
+                import logging
+                logging.getLogger("application_service").error(f"Failed to register internship in sim: {e}")
+                raise BaseAPIException(
+                    "Simulation engine is temporarily unavailable. Please try again.",
+                    status_code=503, code="SIMULATION_UNAVAILABLE"
+                )
+
+        # Register candidate if not already done
+        if sim_application_id is None or sim_candidate_id is None:
+            try:
+                reg_data = await simulation_connector.register_candidate(
+                    internship_id=sim_internship_id,
+                    external_application_uuid=str(application_id),
+                    external_candidate_uuid=str(current_user.id),
+                    email=current_user.email,
+                    name=current_user.full_name,
+                    skills=internship.required_skills or [],
+                )
+                new_sim_cand_id = reg_data.get("simulation_candidate_id") or reg_data.get("sim_candidate_id")
+                new_sim_app_id = reg_data.get("simulation_application_id") or reg_data.get("sim_application_id")
+                if new_sim_cand_id:
+                    cand_map.simulation_candidate_id = new_sim_cand_id
+                    sim_candidate_id = new_sim_cand_id
+                if new_sim_app_id:
+                    app_map.simulation_application_id = new_sim_app_id
+                    sim_application_id = new_sim_app_id
+                await session.flush()
+            except Exception as e:
+                import logging
+                logging.getLogger("application_service").error(f"Failed to register candidate in sim: {e}")
+                raise BaseAPIException(
+                    "Could not register you in the simulation system. Please try again.",
+                    status_code=503, code="SIMULATION_UNAVAILABLE"
+                )
+
+        # Start the simulation attempt
+        try:
+            attempt_data = await simulation_connector.start_attempt(
+                sim_application_id=int(sim_application_id),
+                sim_candidate_id=int(sim_candidate_id),
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger("application_service").error(f"Failed to start simulation attempt: {e}")
+            raise BaseAPIException(
+                "Could not start simulation. Please try again in a moment.",
+                status_code=503, code="SIMULATION_UNAVAILABLE"
+            )
+
+        attempt_id = attempt_data.get("attempt_id") or attempt_data.get("id")
+
+        # Store attempt id in app mapping
+        if attempt_id:
+            app_map.simulation_attempt_id = int(attempt_id)
+            await session.flush()
+
+        # Update application status to SIMULATION_IN_PROGRESS
+        if app.status != ApplicationStatus.SIMULATION_IN_PROGRESS:
+            old_status = app.status.value
+            app.status = ApplicationStatus.SIMULATION_IN_PROGRESS
+            await session.flush()
+            await event_repo.create_event(
+                session, application_id=app.id,
+                event_type="SIMULATION_STARTED",
+                from_status=old_status, to_status="SIMULATION_IN_PROGRESS",
+                actor_id=current_user.id, actor_role=current_user.role.value,
+                metadata={"attempt_id": attempt_id},
+            )
+
+        return {
+            "success": True,
+            "attempt_id": attempt_id,
+            "application_id": str(application_id),
+            "internship_title": internship.title,
+            "message": "Simulation started successfully. Good luck!",
+        }
+
+    # ------------------------------------------------------------------
+    # Pipeline: Start Interview
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def start_interview(
+        session: AsyncSession, application_id: uuid.UUID, current_user: User
+    ) -> dict:
+        """
+        Starts the AI interview for a candidate after simulation completion.
+        Uses internship role/skills/responsibilities to generate contextual questions.
+        Returns session_id for the interview UI redirect.
+        """
+        from sqlalchemy.orm import selectinload
+        stmt = (
+            select(Application)
+            .where(Application.id == application_id)
+            .options(
+                selectinload(Application.vacancy).selectinload(Internship.company)
+            )
+        )
+        res = await session.execute(stmt)
+        app = res.scalar_one_or_none()
+
+        if not app or app.deleted_at:
+            raise ResourceNotFoundException("Application", str(application_id))
+
+        if current_user.role == UserRole.STUDENT and app.candidate_id != current_user.id:
+            raise AuthorizationException("You can only start your own interview.")
+
+        # Allow starting interview after simulation completed or invited
+        allowed_statuses = {
+            ApplicationStatus.SIMULATION_COMPLETED,
+            ApplicationStatus.INTERVIEW_INVITED,
+            ApplicationStatus.INTERVIEW_IN_PROGRESS,
+        }
+        if app.status not in allowed_statuses:
+            raise BaseAPIException(
+                f"Cannot start interview from status '{app.status.value}'. "
+                "Simulation must be completed first.",
+                status_code=400, code="INVALID_STATE"
+            )
+
+        internship = app.vacancy
+        if not internship:
+            raise BaseAPIException("Internship data not found for this application.", status_code=500)
+
+        from capvia_platform.services.interview_connector import interview_connector
+        from capvia_platform.services.services import MappingService
+
+        try:
+            session_data = await interview_connector.start_session(
+                application_id=str(application_id),
+                candidate_id=str(current_user.id),
+                candidate_name=current_user.full_name,
+                job_role=internship.title,
+                skills=internship.required_skills or [],
+                responsibilities=internship.responsibilities or [],
+                company_name=internship.company.name if internship.company else "CAPVIA Partner",
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger("application_service").error(f"Failed to start interview: {e}")
+            raise BaseAPIException(
+                "Could not start the AI interview. Please try again in a moment.",
+                status_code=503, code="INTERVIEW_UNAVAILABLE"
+            )
+
+        interview_session_id = session_data.get("session_id") or session_data.get("id")
+
+        # Store session ID in app mapping
+        if interview_session_id:
+            try:
+                app_map = await MappingService.get_or_create_application_mapping(
+                    session, application_id,
+                    interview_session_uuid=uuid.UUID(str(interview_session_id))
+                )
+            except Exception:
+                pass  # Non-fatal — mapping storage failure should not block the candidate
+
+        # Update status to INTERVIEW_IN_PROGRESS
+        if app.status != ApplicationStatus.INTERVIEW_IN_PROGRESS:
+            old_status = app.status.value
+            app.status = ApplicationStatus.INTERVIEW_IN_PROGRESS
+            await session.flush()
+            await event_repo.create_event(
+                session, application_id=app.id,
+                event_type="INTERVIEW_STARTED",
+                from_status=old_status, to_status="INTERVIEW_IN_PROGRESS",
+                actor_id=current_user.id, actor_role=current_user.role.value,
+                metadata={"session_id": interview_session_id},
+            )
+
+        return {
+            "success": True,
+            "session_id": interview_session_id,
+            "application_id": str(application_id),
+            "internship_title": internship.title,
+            "job_role": internship.title,
+            "message": "Interview session started. Please answer each question carefully.",
+        }
+

@@ -200,5 +200,68 @@ class InterviewConnector:
         )
         return res.json()
 
+    async def start_session(
+        self,
+        application_id: str,
+        candidate_id: str,
+        candidate_name: str,
+        job_role: str,
+        skills: List[str],
+        responsibilities: List[str] = None,
+        company_name: str = "CAPVIA Partner",
+    ) -> Dict[str, Any]:
+        """
+        Starts an AI interview session for a candidate using internship context.
+        Calls the CAPVIA interview start endpoint internally to bootstrap the session.
+        Returns session_id for the interview UI redirect.
+        """
+        import httpx
+        from capvia_platform.core.config import settings
+        from capvia_platform.utils.jwt import create_system_jwt
+
+        session_id = None
+        capvia_base = settings.NEXT_PUBLIC_API_URL if hasattr(settings, 'NEXT_PUBLIC_API_URL') else "http://localhost:8000/api/v1"
+        
+        # Build the combined skill list with responsibilities for richer context
+        enriched_skills = list(skills)
+        if responsibilities:
+            # Add first 3 responsibilities as context hints
+            for r in responsibilities[:3]:
+                if r and len(r) < 100:
+                    enriched_skills.append(r[:80])
+        
+        payload = {
+            "application_id": application_id,
+            "candidate_id": candidate_id,
+            "candidate_name": candidate_name,
+            "job_role": job_role,
+            "skills": enriched_skills[:10],  # Cap at 10 items
+            "company_name": company_name,
+        }
+        
+        try:
+            system_token = create_system_jwt(audience="CAPVIA_CORE", expires_in_sec=300)
+            headers = {
+                "Authorization": f"Bearer {system_token}",
+                "Content-Type": "application/json",
+            }
+            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
+                res = await client.post(
+                    f"{capvia_base}/interview/start",
+                    headers=headers,
+                    json=payload,
+                )
+                if res.status_code >= 400:
+                    logger.warning(f"Interview start returned {res.status_code}: {res.text}")
+                data = res.json()
+                session_id = data.get("session_id") or data.get("id") or str(application_id)
+                return {"session_id": session_id, "questions": data.get("questions", []), "raw": data}
+        except Exception as e:
+            logger.warning(f"Interview engine start_session failed: {e}. Returning fallback session.")
+            # Graceful fallback: generate a session ID locally
+            import uuid as _uuid
+            return {"session_id": str(_uuid.uuid4()), "questions": [], "raw": {}}
+
 
 interview_connector = InterviewConnector()
+

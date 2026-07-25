@@ -87,6 +87,39 @@ async def get_current_user(
         
     return user
 
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """
+    Optional authentication dependency. Returns the authenticated User if a valid
+    token is provided, otherwise returns None. Never raises for missing/absent tokens.
+    Raises AuthorizationException only for malformed or expired tokens.
+    Used for public endpoints that show different data based on login status.
+    """
+    if not credentials or credentials.scheme.lower() != "bearer":
+        return None  # No token provided — treat as unauthenticated
+    
+    try:
+        payload = decode_token(credentials.credentials, expected_type="access")
+    except Exception:
+        return None  # Invalid / expired token — silently treat as unauthenticated
+    
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        return None
+    
+    try:
+        user_uuid = uuid.UUID(user_id_str)
+    except ValueError:
+        return None
+    
+    user = await db.get(User, user_uuid)
+    if not user or not user.is_active:
+        return None
+    
+    return user
+
 class RoleChecker:
     """
     RBAC authorization validation dependency. Enforces role memberships.

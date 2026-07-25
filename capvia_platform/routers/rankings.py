@@ -157,6 +157,46 @@ async def get_internship_leaderboard(
     }
 
 
+@router.get("/rankings/internship/{internship_id}/candidate-leaderboard", tags=["Ranking Engine"])
+async def get_candidate_internship_leaderboard(
+    internship_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=200, description="Max candidates to return"),
+    offset: int = Query(default=0, ge=0, description="Pagination offset"),
+):
+    """
+    Retrieve candidate-facing leaderboard for an internship.
+    Returns anonymized list for cohort rank positioning, with the logged-in candidate's
+    own score highlighted. Confidential HR reports and DNA graphs are omitted.
+    """
+    internship_uuid = uuid.UUID(internship_id)
+    raw_leaderboard = await RankingService.get_internship_leaderboard(
+        db, internship_uuid, limit=limit, offset=offset
+    )
+
+    anonymized_board = []
+    user_id_str = str(current_user.id)
+
+    for idx, row in enumerate(raw_leaderboard):
+        is_self = str(row.get("candidate_id")) == user_id_str
+        anonymized_board.append({
+            "rank": row.get("internship_rank", idx + 1),
+            "final_score": row.get("final_score"),
+            "candidate_name": "You" if is_self else f"Candidate #{row.get('internship_rank', idx + 1)}",
+            "is_current_user": is_self,
+            "badge": row.get("rank_tier", "SILVER"),
+        })
+
+    return {
+        "internship_id": internship_id,
+        "count": len(anonymized_board),
+        "limit": limit,
+        "offset": offset,
+        "leaderboard": anonymized_board,
+    }
+
+
 @router.get("/rankings/internship/{internship_id}/analytics", tags=["Ranking Engine"])
 async def get_internship_analytics(
     internship_id: str,

@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from capvia_platform.api.dependencies import get_db, get_current_user, RoleChecker
+from capvia_platform.api.dependencies import get_db, get_current_user, get_optional_user, RoleChecker
 from capvia_platform.schemas.schemas import (
     InternshipCreateRequest, InternshipUpdateRequest,
     InternshipResponse, InternshipListResponse, InternshipAnalyticsResponse
@@ -35,7 +35,7 @@ async def list_internships(
     sort_by: str = Query("created_at", description="created_at|view_count|stipend_min|application_deadline|title"),
     sort_dir: str = Query("desc", description="asc|desc"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     """
     Marketplace listing with full search, filters, sort, and pagination.
@@ -88,14 +88,14 @@ async def list_my_internships(
 async def get_internship(
     internship_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     """
     Returns the full internship profile.
     Increments view counter for published internships viewed by candidates.
     """
     from capvia_platform.models.models import UserRole
-    increment = current_user.role == UserRole.STUDENT
+    increment = current_user is not None and current_user.role == UserRole.STUDENT
     return await InternshipService.get(db, internship_id, increment_view=increment)
 
 

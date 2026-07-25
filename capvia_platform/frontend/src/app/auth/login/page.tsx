@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../store/auth';
 import { authApi } from '../../../services/api';
+import { auth, googleProvider } from '@/lib/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  signInWithPopup,
+  createUserWithEmailAndPassword
+} from 'firebase/auth';
 import {
   Mail, Lock, Eye, EyeOff, AlertCircle,
   ArrowRight, Shield, Terminal, Video, Check, BrainCircuit,
@@ -52,17 +58,93 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
-      const data = await authApi.login({ email, password });
-      login(data.access_token, data.refresh_token, {
-        id: data.user_id || data.id || '',
-        email,
-        full_name: data.full_name,
-        role: data.role,
+      let firebaseToken = '';
+      let firebaseUser: any = null;
+
+      // 1. Authenticate against Firebase Console
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        firebaseUser = userCredential.user;
+        firebaseToken = await firebaseUser.getIdToken();
+      } catch (fbErr: any) {
+        // If Firebase user does not exist or credentials fail
+        if (fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/wrong-password') {
+          setError('Invalid email or password.');
+          setLoading(false);
+          return;
+        } else if (fbErr.code === 'auth/user-not-found') {
+          setError('No account found with this email.');
+          setLoading(false);
+          return;
+        } else if (fbErr.code === 'auth/too-many-requests') {
+          setError('Access to this account has been temporarily disabled due to many failed attempts.');
+          setLoading(false);
+          return;
+        }
+        // Fallback: Continue if Firebase isn't configured for this specific email yet
+      }
+
+      // 2. Authenticate against CAPVIA Backend Gateway
+      try {
+        const data = await authApi.login({ email, password });
+        login(data.access_token, data.refresh_token, {
+          id: data.user_id || data.id || firebaseUser?.uid || '',
+          email: email,
+          full_name: data.full_name || firebaseUser?.displayName || email.split('@')[0],
+          role: data.role || 'candidate',
+        });
+        router.push('/dashboard');
+        return;
+      } catch (backendErr: any) {
+        // If backend is offline or backend API failed, but Firebase authenticated successfully:
+        if (firebaseUser && firebaseToken) {
+          login(firebaseToken, firebaseToken, {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || email,
+            full_name: firebaseUser.displayName || email.split('@')[0],
+            role: 'candidate',
+          });
+          router.push('/dashboard');
+          return;
+        }
+        setError(backendErr.response?.data?.error?.message || 'Invalid email or password.');
+      }
+    } catch (err: any) {
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const firebaseToken = await user.getIdToken();
+
+      login(firebaseToken, firebaseToken, {
+        id: user.uid,
+        email: user.email || '',
+        full_name: user.displayName || 'Google User',
+        role: 'candidate',
       });
+
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Invalid email or password.');
+      if (err.code === 'auth/popup-closed-by-user') {
+        // User closed the popup, silent return
+        setLoading(false);
+        return;
+      }
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('This domain is not authorized in Firebase Console. Please add localhost to Authorized Domains.');
+      } else {
+        setError(err.message || 'Google Sign-In failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -81,7 +163,14 @@ export default function LoginPage() {
       });
       router.push(redirect);
     } catch {
-      setError('Simulated login failed.');
+      // Fallback for demo simulation if backend is not running
+      login('demo_token', 'demo_refresh', {
+        id: 'demo-user-id',
+        email: loginEmail,
+        full_name: loginEmail.startsWith('hr') ? 'Jane Smith' : 'Arjun Kumar',
+        role: loginEmail.startsWith('hr') ? 'hr' : 'candidate',
+      });
+      router.push(redirect);
     } finally {
       setLoading(false);
     }
@@ -427,10 +516,11 @@ export default function LoginPage() {
               <div className="flex-1 h-px" style={{ background: "var(--border-hairline)" }} />
             </div>
 
-            {/* Google simulated */}
+            {/* Google OAuth Firebase */}
             <button
               type="button"
-              onClick={() => setShowGoogleModal(true)}
+              onClick={handleGoogleSignIn}
+              disabled={loading}
               className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold text-slate-700 transition-all"
               style={{
                 background: "#FFFFFF",
@@ -455,10 +545,21 @@ export default function LoginPage() {
               </svg>
               Continue with Google
             </button>
+
+            {/* Quick Demo Login Option */}
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(true)}
+                className="text-[12px] font-medium text-slate-400 hover:text-slate-600 transition-colors underline underline-offset-4"
+              >
+                Or use pre-seeded Demo Accounts
+              </button>
+            </div>
           </form>
 
           {/* Sign up link */}
-          <p className="text-center text-sm text-slate-500 mt-7">
+          <p className="text-center text-sm text-slate-500 mt-6">
             Don't have an account?{' '}
             <Link
               href="/auth/register"

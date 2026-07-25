@@ -104,6 +104,40 @@ async def withdraw_application(
     return await ApplicationService.withdraw(db, application_id, current_user)
 
 
+@router.post(
+    "/applications/{application_id}/start-simulation",
+    summary="Start simulation for an application (Candidate)"
+)
+async def start_simulation(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Candidate initiates the simulation test for their application.
+    Registers candidate in simulation engine using internship context (skills, responsibilities, role).
+    Returns attempt_id to redirect to the simulation UI.
+    """
+    return await ApplicationService.start_simulation(db, application_id, current_user)
+
+
+@router.post(
+    "/applications/{application_id}/start-interview",
+    summary="Start AI interview for an application (Candidate)"
+)
+async def start_interview(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Candidate initiates the AI interview after simulation completion.
+    Creates an interview session using internship role context.
+    Returns session_id to redirect to the interview UI.
+    """
+    return await ApplicationService.start_interview(db, application_id, current_user)
+
+
 # =========================================================================
 # HR / Admin Endpoints
 # =========================================================================

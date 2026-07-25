@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 import redis.asyncio as aioredis
 
 from capvia_platform.core.config import settings
-from capvia_platform.api.dependencies import get_db, get_redis, get_current_user
+from capvia_platform.api.dependencies import get_db, get_redis, get_current_user, RoleChecker
 from capvia_platform.schemas.schemas import (
     UserRegisterRequest, UserLoginRequest, TokenResponse,
     RefreshTokenRequest, ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest
@@ -40,10 +40,11 @@ async def register_user(
     if res.scalar_one_or_none():
         raise BaseAPIException("Email address already registered", status_code=400, code="BAD_REQUEST")
         
-    # Prevent privilege escalation
+    # Prevent privilege escalation — only ADMIN accounts require admin provisioning
+    # HR (Recruiter) accounts can self-register freely like any other professional platform
     target_role = payload.role.lower() if payload.role else "candidate"
-    if target_role in ("admin", "hr"):
-        raise AuthorizationException("Only administrators can provision admin or HR accounts")
+    if target_role == "admin":
+        raise AuthorizationException("Only administrators can provision admin accounts")
         
     db_role = UserRole.HR if target_role == "hr" else UserRole.STUDENT
     
