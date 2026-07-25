@@ -76,7 +76,7 @@ export default function LoginPage() {
           }, 1200);
           return;
         } else if (fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/wrong-password') {
-          setError('Invalid password or credentials.');
+          setError('Invalid email or password.');
           setLoading(false);
           return;
         } else if (fbErr.code === 'auth/too-many-requests') {
@@ -98,26 +98,11 @@ export default function LoginPage() {
         router.push(data.role === 'hr' ? '/hr/dashboard' : '/dashboard');
         return;
       } catch (backendErr: any) {
-        if (firebaseUser && firebaseToken) {
-          login(firebaseToken, firebaseToken, {
-            id: firebaseUser.uid,
-            email: firebaseUser.email || email,
-            full_name: firebaseUser.displayName || email.split('@')[0],
-            role: 'candidate',
-          });
-          router.push('/dashboard');
-          return;
-        }
-        
-        const errMsg = backendErr.response?.data?.error?.message || '';
-        if (errMsg.toLowerCase().includes('not found') || errMsg.toLowerCase().includes('incorrect email')) {
-          setError('No account found for this email. Redirecting to sign-up to complete your profile setup...');
-          setTimeout(() => {
-            router.push(`/auth/register?email=${encodeURIComponent(email)}`);
-          }, 1500);
-          return;
-        }
-        setError(errMsg || 'Invalid email or password.');
+        // If user is not found in CAPVIA backend database, require profile setup/registration
+        setError('No CAPVIA account found for this email. Redirecting to complete your profile setup (Candidate or HR)...');
+        setTimeout(() => {
+          router.push(`/auth/register?email=${encodeURIComponent(email)}`);
+        }, 1200);
       }
     } catch (err: any) {
       setError('An error occurred during login. Please try again.');
@@ -132,11 +117,10 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      const firebaseToken = await user.getIdToken();
       const userEmail = user.email || '';
       const userName = user.displayName || 'User';
 
-      // Check if user already exists in backend, otherwise redirect to profile signup
+      // Check if user account already exists in CAPVIA backend database
       try {
         const data = await authApi.login({ email: userEmail, password: user.uid });
         login(data.access_token, data.refresh_token, {
@@ -147,11 +131,11 @@ export default function LoginPage() {
         });
         router.push(data.role === 'hr' ? '/hr/dashboard' : '/dashboard');
       } catch {
-        // User does not exist in CAPVIA backend -> Redirect to Sign-Up profile completion
-        setError('Google sign-in successful! Redirecting to complete your profile setup...');
+        // Account does NOT exist in CAPVIA database yet -> Redirect to Registration to select Role (Candidate/HR) & Complete Profile
+        setError('New account detected! Redirecting to complete your profile setup and select your role (Candidate or HR)...');
         setTimeout(() => {
           router.push(`/auth/register?email=${encodeURIComponent(userEmail)}&name=${encodeURIComponent(userName)}`);
-        }, 1200);
+        }, 1000);
       }
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') {
